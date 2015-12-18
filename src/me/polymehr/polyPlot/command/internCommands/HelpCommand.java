@@ -4,16 +4,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import me.polymehr.polyPlot.command.Input;
+import me.polymehr.polyPlot.command.CommandInterface;
 
 /**
  * A command that provides help.
  */
 public class HelpCommand extends Command {
   
-  Input cm;
+  CommandInterface cm;
   
-  public HelpCommand(Input cm) {
+  public HelpCommand(CommandInterface cm) {
     super("help", "Usage: 'help [command]'", "Provides help for all commands or a specific one.", 
         "Can be used to display  help for all commands or a specific one.",
         new String[]{"h","?"});

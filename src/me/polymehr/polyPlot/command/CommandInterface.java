@@ -1,30 +1,32 @@
 package me.polymehr.polyPlot.command;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.polymehr.polyPlot.PolyPlot;
 import me.polymehr.polyPlot.command.internCommands.AddCommand;
 import me.polymehr.polyPlot.command.internCommands.Command;
 import me.polymehr.polyPlot.command.internCommands.HelpCommand;
 import me.polymehr.polyPlot.command.internCommands.RemoveCommand;
-import me.polymehr.polyPlot.functions.FunctionUtil;
 
-
-public class Input extends Thread {
+/**
+ * An class that provides basic command and command line parsing
+ * functionality.<br>
+ * This class runs as its own thread and reads from the standard
+ * input. 
+ */
+public class CommandInterface extends Thread {
 
   /** A List of the registered commands. */
   private List<Command> cmds = new ArrayList<Command>();
 
-  public Input() {
+  public CommandInterface() {
     this(new ArrayList<Command>(0));
     registerDefaults();
   }
   
-  public Input(List<Command> commands) {
+  public CommandInterface(List<Command> commands) {
     super("Input");
     this.setDaemon(true);
     for (Command c : commands)
@@ -213,28 +215,28 @@ public class Input extends Thread {
     return new ArrayList<Command>(cmds);
   }
   
-  @Override
-  public void run() {
-    BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-//    System.out.flush();
-    System.out.print("> ");
-    while (true) {
-      try {
-        while (true) {
-//          System.err.flush();
-//          System.out.flush();
-          runCommand(in.readLine());
-//          System.out.flush();
-          System.out.print("> ");
-        } 
-
-      } catch (Exception e) {
-        System.err.flush();
-        e.printStackTrace();
-//        System.out.flush();
-        System.out.print("> ");
-      }
-    }
-
-  }
+//  @Override
+//  public void run() {
+//    BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+////    System.out.flush();
+//    System.out.print("> ");
+//    while (true) {
+//      try {
+//        while (true) {
+////          System.err.flush();
+////          System.out.flush();
+//          runCommand(in.readLine());
+////          System.out.flush();
+//          System.out.print("> ");
+//        } 
+//
+//      } catch (Exception e) {
+//        System.err.flush();
+//        e.printStackTrace();
+////        System.out.flush();
+//        System.out.print("> ");
+//      }
+//    }
+//
+//  }
 }
