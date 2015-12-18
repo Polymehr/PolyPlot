@@ -1,22 +1,24 @@
 package me.polymehr.polyPlot;
 
-import me.polymehr.polyPlot.command.Input;
+import me.polymehr.polyPlot.command.CommandInterface;
+import me.polymehr.polyPlot.command.InputInterpreter;
+import me.polymehr.polyPlot.command.UnixInputInterpreter;
 
 
 public class PolyPlot  {
   
-  public static final String version = "0.6.0";
+  public static final String VERSION = "0.6.0";
   
   private static PlotterController main;
   
-  private static Input in;
+  private static InputInterpreter in;
   
   public static void main(String[] args) {
     
     
     main = new PlotterController();
     
-    in = new Input();
+    in = new UnixInputInterpreter(new CommandInterface(), null, 0);
     
     in.start();
 

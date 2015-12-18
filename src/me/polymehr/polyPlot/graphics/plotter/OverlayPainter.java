@@ -187,7 +187,7 @@ class OverlayPainter {
   private void drawDebug(Graphics g) {
     String[] info = {
         "DEBUG INFO:",
-        "ProgramVersion   = \""+PolyPlot.version+"\"",
+        "ProgramVersion   = \""+PolyPlot.VERSION+"\"",
         "Span             = \""+fp.span+"\"",
         "SpanX            = \""+fp.spanX+"\"",
         "SpanY            = \""+fp.spanY+"\"",
