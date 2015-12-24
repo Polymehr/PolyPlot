@@ -1,4 +1,4 @@
-package me.polymehr.polyPlot.command.internCommands;
+package me.polymehr.polyCmd.internCommands;
 
 /**
  * Represents a Command. All commands should inherit it.<br>

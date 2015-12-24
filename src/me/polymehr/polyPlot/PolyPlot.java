@@ -1,8 +1,8 @@
 package me.polymehr.polyPlot;
 
-import me.polymehr.polyPlot.command.CommandInterface;
-import me.polymehr.polyPlot.command.InputInterpreter;
-import me.polymehr.polyPlot.command.UnixInputInterpreter;
+import me.polymehr.polyCmd.CommandInterface;
+import me.polymehr.polyCmd.InputInterpreter;
+import me.polymehr.polyCmd.LinuxInputInterpreter;
 
 
 public class PolyPlot  {
@@ -18,7 +18,7 @@ public class PolyPlot  {
     
     main = new PlotterController();
     
-    in = new UnixInputInterpreter(new CommandInterface(), null, 0);
+    in = new LinuxInputInterpreter(new CommandInterface(), null, 0);
     
     in.start();
 

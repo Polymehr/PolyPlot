@@ -1,10 +1,10 @@
-package me.polymehr.polyPlot.command.internCommands;
+package me.polymehr.polyCmd.internCommands;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import me.polymehr.polyPlot.command.CommandInterface;
+import me.polymehr.polyCmd.CommandInterface;
 
 /**
  * A command that provides help.

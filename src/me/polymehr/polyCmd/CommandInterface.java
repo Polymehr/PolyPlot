@@ -1,14 +1,14 @@
-package me.polymehr.polyPlot.command;
+package me.polymehr.polyCmd;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.polymehr.polyPlot.command.internCommands.AddCommand;
-import me.polymehr.polyPlot.command.internCommands.Command;
-import me.polymehr.polyPlot.command.internCommands.HelpCommand;
-import me.polymehr.polyPlot.command.internCommands.RemoveCommand;
+import me.polymehr.polyCmd.internCommands.AddCommand;
+import me.polymehr.polyCmd.internCommands.Command;
+import me.polymehr.polyCmd.internCommands.HelpCommand;
+import me.polymehr.polyCmd.internCommands.RemoveCommand;
 
 /**
  * An class that provides basic command and command line parsing

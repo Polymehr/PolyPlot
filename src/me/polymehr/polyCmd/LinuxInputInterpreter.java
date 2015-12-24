@@ -1,12 +1,14 @@
-package me.polymehr.polyPlot.command;
+package me.polymehr.polyCmd;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class UnixInputInterpreter extends InputInterpreter {
+import me.polymehr.polyCmd.util.Unix;
 
-  public UnixInputInterpreter(CommandInterface ci, Path historyLocation,
+public class LinuxInputInterpreter extends InputInterpreter {
+
+  public LinuxInputInterpreter(CommandInterface ci, Path historyLocation,
       int preLoadedHistoryLines) {
     super(ci, historyLocation, preLoadedHistoryLines);
   }
@@ -20,12 +22,19 @@ public class UnixInputInterpreter extends InputInterpreter {
   }
 
   @Override
-  boolean init() {
+  protected boolean init() {
+    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+      @Override
+      public void run() {
+        exit();
+      }
+    }));
+    
     return setTerminalMode("raw");
   }
 
   @Override
-  Function readFunction(BufferedReader input) throws IOException {
+  protected Function readFunction(BufferedReader input) throws IOException {
     this.lastChar = input.read();
     
     
@@ -78,18 +87,50 @@ public class UnixInputInterpreter extends InputInterpreter {
     } catch (IOException | InterruptedException e) {
       return false;
     }
+  }
   
+//  private int getColumns() {
+//    try {
+//      Process p = Runtime.getRuntime().exec(new String[]{"/bin/sh", "-c", 
+//          "\"echo $COLUMNS\" < /dev/tty"});
+//      System.out.println("Waiting.");
+////      p.waitFor();
+//      BufferedReader br = new BufferedReader(new InputStreamReader(
+//          p.getInputStream()));
+//      
+//      return Integer.parseInt(br.readLine());
+//    } catch (IOException /*| InterruptedException*/ e) {
+//      e.printStackTrace();
+//      return 0;
+//    }
+//  }
+
+  @Override
+  protected void updateLine() {
+    System.out.print("Drawing.");
+    System.out.print("\r" + PS1 + " " + line + " \u001B[K");
   }
 
   @Override
-  boolean doFunction(Function f) {
-    // TODO Auto-generated method stub
-    return false;
-  }
-
-  @Override
-  void setLine(String line) throws IOException {
-    System.out.print("\r" + PS1 + " " + line + "\u001B[K");
+  public boolean setCaret(int position) {
+    if (position < 0)
+      caret = 0;
+    else if (position > line.length())
+      caret = line.length();
+    else 
+      caret = position;
+    
+    
+    StringBuffer buf = new StringBuffer();
+    
+    for (int len = caret-line.length(); len <= 0; ++len)
+      buf.append('\u0008');
+    
+    System.out.print(buf);
+    
+//    System.out.print("\u001B["+(PS1.length()+2+caret)+"G");
+    
+    return caret == position;
     
   }
 
