@@ -1,4 +1,4 @@
-package me.polymehr.polyPlot.command.internCommands;
+package me.polymehr.polyCmd.internCommands;
 
 import me.polymehr.polyPlot.PolyPlot;
 import me.polymehr.polyPlot.graphics.plotter.FunctionPlotter;
