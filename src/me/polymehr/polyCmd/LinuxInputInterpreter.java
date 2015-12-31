@@ -1,21 +1,39 @@
 package me.polymehr.polyCmd;
 
+import java.awt.Color;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
-import me.polymehr.polyCmd.util.Unix;
+import javax.swing.JFrame;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+
+import me.polymehr.polyCmd.util.LinuxUtil;
 
 public class LinuxInputInterpreter extends InputInterpreter {
-
+  
+  private State lastState = null;
+  
+  private JTextArea j = new JTextArea();
+  
   public LinuxInputInterpreter(CommandInterface ci, Path historyLocation,
       int preLoadedHistoryLines) {
     super(ci, historyLocation, preLoadedHistoryLines);
+    
+    JFrame j = new JFrame("Test");
+    j.setSize(300, 300);
+    JScrollPane sp = new JScrollPane(this.j);
+    this.j.setBackground(Color.BLACK);
+    this.j.setForeground(Color.GREEN);
+    j.add(sp);
+    j.setVisible(true);
   }
 
   @Override
   public void close() throws Exception {
-    if (!setTerminalMode("sane")) {
+    if (!setTerminalMode("sane") | !setTerminalMode("echo")) {
       System.err.println("An error occurred while resetting your terminal to \"sane\" mode.\n"
           + "As a result your terminal could misbehave. Try resetting it manualy with the 'stty' command.");
     }
@@ -30,7 +48,8 @@ public class LinuxInputInterpreter extends InputInterpreter {
       }
     }));
     
-    return setTerminalMode("raw");
+    return setTerminalMode("raw") & setTerminalMode("-echo");
+    
   }
 
   @Override
@@ -69,14 +88,18 @@ public class LinuxInputInterpreter extends InputInterpreter {
         return Function.AUTOCOMPLETE;
       case 0x0D: // New Line / Carriage Return 
         return Function.SEND;
+      case 0x0C:
+        return Function.CLEAR;
       case 0x7F: // Backspace
         return Function.DELETE_BACK;
       case 0x03: // Ctrl+C / End of Text
       case 0x04: // Ctrl+D / End of Transmission
+      case -1  :
         return Function.EXIT;
     
       default :
-        return Function.CHAR_INPUT;
+        return lastChar < 0x20 ? 
+            Function.NO_OPERATION : Function.CHAR_INPUT;
     }
   }
   
@@ -88,49 +111,81 @@ public class LinuxInputInterpreter extends InputInterpreter {
       return false;
     }
   }
-  
-//  private int getColumns() {
-//    try {
-//      Process p = Runtime.getRuntime().exec(new String[]{"/bin/sh", "-c", 
-//          "\"echo $COLUMNS\" < /dev/tty"});
-//      System.out.println("Waiting.");
-////      p.waitFor();
-//      BufferedReader br = new BufferedReader(new InputStreamReader(
-//          p.getInputStream()));
-//      
-//      return Integer.parseInt(br.readLine());
-//    } catch (IOException /*| InterruptedException*/ e) {
-//      e.printStackTrace();
-//      return 0;
-//    }
-//  }
+
 
   @Override
-  protected void updateLine() {
-    System.out.print("Drawing.");
+  protected void updateDrawnLine() {
+    setCaretOnScreen(0, false);
+    
     System.out.print("\r" + PS1 + " " + line + " \u001B[K");
+//    System.out.print("["+internal.size()+","+caretLine+":"+caret+"]");
+  }
+  
+  private void drawLine(int number) {
+    
+  }
+  
+  private void setLine(int line) {
+    System.out.print("");
+  }
+  
+  String last = "";
+
+  public boolean setCaretOnScreen(int position, boolean updateCaret) {
+    final int size = internal.size(), termWidth = LinuxUtil.getTerminalColumns();
+    if (position < 0)
+      position = 0;
+    else if (position > size)
+      position = size;
+    
+    int caretLine = (caret+PS1.length()+1)/termWidth;
+    int targtLine = (position+PS1.length()+1)/termWidth;
+    int lineOffset = targtLine - caretLine;
+    
+    String current = "Caret: " + caret + ";\n pos:"+position+";\n caretline:" + caretLine + 
+        ";\n posline: " +targtLine + ";\n lineoffset: "+lineOffset +";\n term: "+ termWidth;
+    
+    if (termWidth >= (PS1.length()+1+size + (caret == size ? 1: 0))) {
+      System.out.print("\u001B["+(PS1.length()+2+position)+"G");
+      current += ";\n of: false\n\n";
+    } else {
+      current += ";\n of: true\n\n";
+      if (lineOffset != 0)
+        System.out.print("\u001B["+Math.abs(lineOffset)+(lineOffset < 0?"A":"B"));
+      System.out.print("\r\u001B["+((PS1.length()+position-1)%termWidth)+"C");
+      
+//      try {
+//        Thread.currentThread().sleep(1000);
+//      } catch (InterruptedException e) {
+//        e.printStackTrace();
+//      }
+    }
+    
+    j.setText(last + current);
+    last = current;
+    
+    if (updateCaret)
+      caret = position;
+    
+    return position >= 0 && position <= size;
+    
   }
 
   @Override
-  public boolean setCaret(int position) {
-    if (position < 0)
-      caret = 0;
-    else if (position > line.length())
-      caret = line.length();
-    else 
-      caret = position;
+  public boolean setCaretOnScreen(int position) {
+    return setCaretOnScreen(position, true);
+  }
+  
+  private static class State {
+    List<Integer> internal = null;
+    int           caret = 0;
+    int           termsize = 0;
     
-    
-    StringBuffer buf = new StringBuffer();
-    
-    for (int len = caret-line.length(); len <= 0; ++len)
-      buf.append('\u0008');
-    
-    System.out.print(buf);
-    
-//    System.out.print("\u001B["+(PS1.length()+2+caret)+"G");
-    
-    return caret == position;
+    void update(LinuxInputInterpreter lIn) {
+      internal = lIn.internal;
+      caret    = lIn.caret;
+      termsize = LinuxUtil.getTerminalColumns();
+    }
     
   }
 
