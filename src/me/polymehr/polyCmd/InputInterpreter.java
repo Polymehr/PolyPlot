@@ -4,8 +4,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import javax.print.attribute.standard.Chromaticity;
 
 public abstract class InputInterpreter extends Thread implements AutoCloseable {
   
@@ -28,6 +31,7 @@ public abstract class InputInterpreter extends Thread implements AutoCloseable {
   protected List<String> history;
   protected int historyPointer;
   
+  protected List<Integer> internal;
   protected StringBuffer line;
   protected int lastChar = 20;
   protected int caret = 0;
@@ -55,30 +59,34 @@ public abstract class InputInterpreter extends Thread implements AutoCloseable {
   protected boolean doFunction(Function f) throws Exception {
     switch (f) {
       case CARET_LEFT:
-        updateLine();
-        return setCaret(caret-1);
+        updateDrawnLine();
+        return setCaretOnScreen(caret-1);
       case CARET_RIGHT:
-        updateLine();
-        return setCaret(caret+1);
+        updateDrawnLine();
+        return setCaretOnScreen(caret+1);
       case AUTOCOMPLETE:
         break;
       case CARET_END:
-        break;
+        return setCaretOnScreen(internal.size());
       case CARET_START:
-        break;
+        return setCaretOnScreen(0);
       case CARET_WORD_NEXT:
         break;
       case CARET_WORD_PREV:
         break;
       case CHAR_INPUT:
-        String s = new String(Character.toChars(lastChar));
-        this.line.insert(caret, s);
-        updateLine();
-        return setCaret(caret+1);
+        internal.add(caret++, lastChar);
+        updateAll();
+        return setCaretOnScreen(caret);
       case CLEAR:
         break;
       case DELETE_BACK:
-        break;
+        if (caret > 0) {
+          internal.remove(--caret);
+          updateAll();
+          return setCaretOnScreen(caret);
+        } else
+          return false;
       case DELETE_FRONT:
         break;
       case DELETE_WORD_NEXT:
@@ -101,25 +109,37 @@ public abstract class InputInterpreter extends Thread implements AutoCloseable {
     }
     
     
-    updateLine("");
-    
     return false;
   }
   
   public void setLine(String line) {
-    if (line != null)
+    if (line != null) {
+      internal.clear();
+      line.codePoints().forEach((cp) -> internal.add(cp));
       this.line = new StringBuffer(line);
+    }
+  }
+  
+  protected void updateAll() {
+    updateLineString();
+    updateDrawnLine();
+  }
+  
+  protected void updateLineString() {
+    line.setLength(0);
+    for (int cp : internal)
+      line.appendCodePoint(cp);
   }
   
   protected void updateLine(String line, int caretPosition) {
    setLine(line);
-   updateLine();
-   setCaret(caretPosition);
+   updateDrawnLine();
+   setCaretOnScreen(caretPosition);
   }
   
-  private void updateLine(String line) {
+  protected void updateLine(String line) {
     setLine(line);
-    updateLine();
+    updateDrawnLine();
   }
   
   
@@ -145,8 +165,8 @@ public abstract class InputInterpreter extends Thread implements AutoCloseable {
     
   }
   
-  protected abstract void updateLine();
-  public abstract boolean setCaret(int position);
+  protected abstract void updateDrawnLine();
+  public abstract boolean setCaretOnScreen(int position);
   
   @Override
   public void run() {
@@ -154,6 +174,7 @@ public abstract class InputInterpreter extends Thread implements AutoCloseable {
     try (BufferedReader bf = new BufferedReader(new InputStreamReader(System.in))) {
       inputStream = bf;
       line = new StringBuffer();
+      internal = new ArrayList<>(line.capacity());
       updateLine("Super duper muper testy Test.");
       while (true) {
         Function f = this.readFunction(bf);

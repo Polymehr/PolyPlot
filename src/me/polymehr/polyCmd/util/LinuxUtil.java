@@ -1,9 +1,11 @@
 package me.polymehr.polyCmd.util;
 
-public class Unix {
+import me.polymehr.polyCmd.natives.NativeLoader;
+
+public class LinuxUtil {
   
   static {
-    System.loadLibrary("linux-native-utils");
+    NativeLoader.load("linux-native-utils", "lib", ".so");
   }
   
   /**
