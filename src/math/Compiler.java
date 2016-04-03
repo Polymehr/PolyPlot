@@ -261,7 +261,6 @@ public final class Compiler {
         System.out.println("TEST: " + testExprRes);
         PureFunction funnn = new PureFunction(testExprRes.toArray(new CompiledToken[testExprRes.size()]), "fun");
         System.out.println(funnn.of(1));
-        if (true) return;
         String[] exprs = {
                 "42+(23^2-3*4/(3+2))%222/5*((3+2*2)/1)",
                 "(42+(23^2-3*4/(3+2))%222/((3+2*2)/1))",
