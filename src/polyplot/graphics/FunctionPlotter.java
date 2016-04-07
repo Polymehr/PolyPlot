@@ -14,6 +14,8 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
@@ -32,6 +34,7 @@ public class FunctionPlotter extends JPanel {
   long renderTime;
   
   HashMap<Function, Color> functions;
+  private List<DrawableComponent> toDraw;
   
   Options o;
   private OverlayPainter op;
@@ -62,6 +65,8 @@ public class FunctionPlotter extends JPanel {
     registerMouseListener();
     
     functions = new HashMap<Function, Color>();
+    toDraw = new LinkedList<>();
+    toDraw.add(new Scale(o.scaleColor));
     
   }
   
@@ -105,40 +110,62 @@ public class FunctionPlotter extends JPanel {
 
 
 
-  double getValueXPerPixel() {
+  public double getValueXPerPixel() {
     return spanX/getWidth();
   }
-  double getValueYPerPixel() {
+  public double getValueYPerPixel() {
     return spanY/getHeight();
   }
   
-  double getValueOfXPixel(int pixel) {
+  public double getValueOfXPixel(int pixel) {
     return xCorner+pixel*getValueXPerPixel();
   }
   
-  double getValueOfYPixel(int pixel) {
+  public double getValueOfYPixel(int pixel) {
     return (yCorner+(getHeight()-pixel-1)*getValueYPerPixel());
   }
   
-  int getPixelToYValue(double value) {
+  public int getPixelToYValue(double value) {
     if (value == Double.NaN)
       throw new IllegalArgumentException("Value has to be a real number! "+value);
     return (int) (getHeight()-(value/getValueYPerPixel()-yCorner/getValueYPerPixel())-1);
   }
-  int getPixelToXValue(double value) {
+  public int getPixelToXValue(double value) {
     if (value == Double.NaN)
       throw new IllegalArgumentException("Value has to be a real number! "+value);
     return (int) ((value/getValueXPerPixel()-xCorner/getValueXPerPixel())-1);
   }
+    
+  public double getSpanY() {
+    return spanY;
+  }
+
+  public void setSpanY(double spanY) {
+    this.spanY = spanY;
+  }
   
+  public double getXCorner() {
+    return xCorner;
+  }
+
+  public double getYCorner() {
+    return yCorner;
+  }
+
+  public double getSpan() {
+    return span;
+  }
   
-  
-  
-  
-  
-  
-  
-  
+  public double getSpanX() {
+    return spanX;
+  }
+
+
+
+
+
+
+
   @Override
   public void paint(Graphics g) {
     reCalculateSpans();
@@ -149,6 +176,11 @@ public class FunctionPlotter extends JPanel {
     
     drawFunctions(g);
     op.drawOverlay(g);
+    
+    for (DrawableComponent dc : toDraw) {
+      dc.update(this);
+      dc.draw(g, this);
+    }
     
     
   }
@@ -219,10 +251,8 @@ public class FunctionPlotter extends JPanel {
           double y0   = f.calculate(x0);
           double y1   = f.calculate(x1);
 
-          
-          final double NaN = Double.NaN;
 
-          if (y0!=NaN&&y1!=NaN)
+          if (!Double.isNaN(y0)&&!Double.isNaN(y1))
             g.drawLine(
                 i, getPixelToYValue(y0),
                 i+1, getPixelToYValue(y1));

@@ -239,7 +239,7 @@ class OverlayPainter {
       g.drawLine(0, yPx, fp.getWidth(), yPx);
       g.drawLine(xPx, 0, xPx, fp.getWidth());
       
-      drawScale(xPx, yPx, g);
+      //drawScale(xPx, yPx, g);
       
       drawInfoBox(xPx, yPx, g);
       
