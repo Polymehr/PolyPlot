@@ -6,8 +6,6 @@ import java.awt.Graphics;
 
 public interface DrawableComponent {
   
-  void update(FunctionPlotter parent);
-  
   void draw(Graphics gc, FunctionPlotter parent);
   
   void setForegroundColor(Color c);

@@ -190,6 +190,7 @@ class OverlayPainter {
         "yCorner          = \""+fp.yCorner+"\"",
         "ValuePerXPixel   = \""+fp.getValueXPerPixel()+"\"",
         "ValuePerYPixel   = \""+fp.getValueYPerPixel()+"\"",
+        "Power            = \""+fp.getPower()+"\"",
         "RenderTime       = \""+fp.renderTime+"ns\"",
     };
     Font f = g.getFont();
@@ -241,10 +242,10 @@ class OverlayPainter {
       
       //drawScale(xPx, yPx, g);
       
-      drawInfoBox(xPx, yPx, g);
+      //drawInfoBox(xPx, yPx, g);
       
-      if (fp.o.debug)
-        drawDebug(g);
+//      if (fp.o.debug)
+//        drawDebug(g);
       
   }
   
