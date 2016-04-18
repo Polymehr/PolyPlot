@@ -11,40 +11,23 @@ import java.util.List;
 public class Scale implements DrawableComponent {
   
   private Color color;
-  
-  private int horizontalBar = 0;
-  private int verticalBar = 0;
-  
-  private int pow = 0;
 
   public Scale(Color color) {
       this.color = color;
   }
 
   @Override
-  public void update(FunctionPlotter parent) {
-      int zeroX = parent.getPixelToXValue(0);
-      int zeroY = parent.getPixelToYValue(0);
-
-      verticalBar = (zeroY < 0) ? 0 : (zeroY > parent.getHeight()-1) ? parent.getHeight()-1 : zeroY;
-      horizontalBar   = (zeroX < 0) ? 0 : (zeroX > parent.getWidth()-1) ? parent.getWidth()-1 : zeroX;
-
-      
-      final double span = parent.getSpan()/2;
-      
-      if (span > 1)
-        for (int i = 0; span >= Math.pow(10, i); ++i) {
-          pow =  i-1;
-        }
-      else
-        for (int i = 0; span <= Math.pow(10, i); --i) {
-          pow = i-1;
-        }
-      
-  }
-
-  @Override
   public void draw(Graphics gc, FunctionPlotter parent) {
+    
+    int zeroX = parent.getPixelToXValue(0);
+    int zeroY = parent.getPixelToYValue(0);
+
+    final int verticalBar = (zeroY < 0) ? 0 : (zeroY > parent.getHeight()-1) ? parent.getHeight()-1 : zeroY;
+    final int horizontalBar   = (zeroX < 0) ? 0 : (zeroX > parent.getWidth()-1) ? parent.getWidth()-1 : zeroX;
+    
+    int pow = parent.getPower();
+    
+    
     gc.setColor(color);
     gc.drawLine(0, verticalBar, parent.getWidth(), verticalBar);
     gc.drawLine(horizontalBar, 0, horizontalBar, parent.getHeight());
@@ -55,17 +38,25 @@ public class Scale implements DrawableComponent {
     final BigDecimal offset  = BigDecimal.ONE.movePointRight(pow);
     { 
       final int markers = BigDecimal.valueOf(parent.spanX).divide(offset).setScale(0, RoundingMode.CEILING).intValue();
-      final BigDecimal compare = BigDecimal.valueOf(parent.getXCorner() + parent.getSpanX()).add(offset);
-        
-      for (BigDecimal start = startX; start.compareTo(compare) == -1; start = start.add(offset)) {
-        drawXMarker(start, new Point(parent.getPixelToXValue(start.doubleValue()), verticalBar), 2, parent, gc);
-      }
+      final BigDecimal compare = BigDecimal.valueOf(parent.getXCorner() + parent.getXSpan()).add(offset);
+      
+      if (true)
+        for (BigDecimal start = startX; start.compareTo(compare) == -1; start = start.add(offset)) {
+          drawXMarker(start, new Point(parent.getPixelToXValue(start.doubleValue()), verticalBar), 2, parent, gc);
+        }
+      /*else {
+        int i = 0;
+        for (BigDecimal start = startX; start.compareTo(compare) == -1; start = start.add(offset), ++i) {
+          drawXMarker(i % 10 == 0 ? start : null, new Point(parent.getPixelToXValue(start.doubleValue()), verticalBar), 2, parent, gc);
+        }
+      }*/
+      
     }
       
       
     {
       final int markers = BigDecimal.valueOf(parent.spanX).divide(offset).setScale(0, RoundingMode.CEILING).intValue();
-      final BigDecimal compare = BigDecimal.valueOf(parent.getYCorner() + parent.getSpanY()).add(offset);
+      final BigDecimal compare = BigDecimal.valueOf(parent.getYCorner() + parent.getYSpan()).add(offset);
         
       int maxLength = 0;
       List<BigDecimal> cache = new LinkedList<>();
@@ -85,7 +76,7 @@ public class Scale implements DrawableComponent {
   }
   
   private void drawXMarker(BigDecimal value, Point p, int lineLength, FunctionPlotter parent, Graphics gc) {
-    if (value.stripTrailingZeros().equals(BigDecimal.ZERO))
+    if (value != null && value.stripTrailingZeros().equals(BigDecimal.ZERO))
       return;
     final String text = (value == null ? "" : (value.precision() < 4 ? value.toPlainString() : value.toEngineeringString()));
     

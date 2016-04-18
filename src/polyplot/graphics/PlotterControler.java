@@ -6,13 +6,13 @@ import java.awt.event.WindowEvent;
 
 import javax.swing.JFrame;
 
-public class PlotterController extends JFrame {
+public class PlotterControler extends JFrame {
 
   private static final long serialVersionUID = 6483735967730423588L;
   
   private FunctionPlotter plotter;
   
-  public PlotterController() {
+  public PlotterControler() {
     super("PolyPlot");
     int px = 600;
     

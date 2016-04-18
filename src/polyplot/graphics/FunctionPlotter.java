@@ -1,6 +1,7 @@
 package polyplot.graphics;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -13,6 +14,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,6 +25,7 @@ import javax.swing.InputMap;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
+import polyplot.PolyPlot;
 import polyplot.functions.ConstantFunction;
 import polyplot.functions.Function;
 import polyplot.functions.FunctionUtil;
@@ -44,7 +47,15 @@ public class FunctionPlotter extends JPanel {
   
   double yCorner;
   
+  final double spanBase;
   double span, spanX, spanY;
+  
+  private Point mouse;
+  
+  private int pow;
+
+  private double zoomBase;
+  private int zoom;
   
   
   
@@ -52,7 +63,7 @@ public class FunctionPlotter extends JPanel {
     if (span <= 0)
       throw new IllegalArgumentException("Span cannot be negative or zero!");
     
-    this.span = span;
+    this.span = spanBase = span;
     
     
     yCorner = -(span/2);
@@ -67,6 +78,15 @@ public class FunctionPlotter extends JPanel {
     functions = new HashMap<Function, Color>();
     toDraw = new LinkedList<>();
     toDraw.add(new Scale(o.scaleColor));
+    toDraw.add(new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, 500));
+    toDraw.add(this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0)));
+    mouse = null;
+    
+    zoom = 0;
+    zoomBase = 1.05;
+    
+    updateSpans();
+    updatePow();
     
   }
   
@@ -136,12 +156,8 @@ public class FunctionPlotter extends JPanel {
     return (int) ((value/getValueXPerPixel()-xCorner/getValueXPerPixel())-1);
   }
     
-  public double getSpanY() {
+  public double getYSpan() {
     return spanY;
-  }
-
-  public void setSpanY(double spanY) {
-    this.spanY = spanY;
   }
   
   public double getXCorner() {
@@ -156,8 +172,20 @@ public class FunctionPlotter extends JPanel {
     return span;
   }
   
-  public double getSpanX() {
+  public double getXSpan() {
     return spanX;
+  }
+  
+  public Point getMousePos() {
+    return mouse;
+  }
+  
+  public int getPower() {
+    return pow;
+  }
+  
+  public List<DrawableFunction> getFuctions() {
+    return new LinkedList<>();
   }
 
 
@@ -168,7 +196,7 @@ public class FunctionPlotter extends JPanel {
 
   @Override
   public void paint(Graphics g) {
-    reCalculateSpans();
+    updateSpans();
 //    xCorner+=5;
 //    yCorner+=5;
     g.setColor(o.backgroundColor);
@@ -178,7 +206,6 @@ public class FunctionPlotter extends JPanel {
     op.drawOverlay(g);
     
     for (DrawableComponent dc : toDraw) {
-      dc.update(this);
       dc.draw(g, this);
     }
     
@@ -282,44 +309,21 @@ public class FunctionPlotter extends JPanel {
   }
   
   
-  private void zoomIn(Point center, double percentage) {
-    if (percentage <= 0 || percentage >= 1)
-      throw new IllegalArgumentException("Illegal zoom value: " + percentage*100+"%");
+  public void zoom(Point center, int factor) {
     
     int y0 = center.y, x0 = center.x;
     
-    if (y0<0 || x0<0  || y0>getHeight()-1 || x0>getWidth()-1)
-      throw new IllegalArgumentException("Zoom center out of bounds: " + x0 + ","+y0);
-    
     double vy = getValueOfYPixel(y0), vx = getValueOfXPixel(x0);
     
-    span -= span*percentage;
-    reCalculateSpans();
+    span = spanBase * Math.pow(zoomBase, zoom += factor);
+    updateSpans();
     int x1 = getPixelToXValue(vx), y1 = getPixelToYValue(vy);
     
     move(new Point(x1, y1), center);
     
   }
   
-  private void zoomOut(Point center, double percentage) {
-    if (percentage <= 0)
-      throw new IllegalArgumentException("Illegal zoom value: " + percentage*100+"%");
-    
-    int y0 = center.y, x0 = center.x;
-    
-    if (y0<0 || x0<0  || y0>getHeight()-1 || x0>getWidth()-1)
-      throw new IllegalArgumentException("Zoom center out of bounds: " + x0 + ","+y0);
-    
-    double vy = getValueOfYPixel(y0), vx = getValueOfXPixel(x0);
-    
-    span += span*percentage;
-    reCalculateSpans();
-    int x1 = getPixelToXValue(vx), y1 = getPixelToYValue(vy);
-    
-    move(new Point(x1, y1), center);
-  }
-  
-  private void reCalculateSpans() {
+  private void updateSpans() {
       if (o.stretch || getHeight()==getWidth()) {
         spanY = span;
         spanX = span;
@@ -329,7 +333,21 @@ public class FunctionPlotter extends JPanel {
       } else {
         spanX=span;
         spanY=getValueXPerPixel()*(getHeight()-1);
-      }    
+      }
+      
+      updatePow();
+  }
+  
+  private void updatePow() {
+    final double span = this.span/2;
+    if (span > 1)
+      for (int i = 0; span >= Math.pow(10, i); ++i) {
+        pow = i;
+      }
+    else
+      for (int i = 0; span <= Math.pow(10, i); --i) {
+        pow = i-1;
+      }
   }
 
   
@@ -359,7 +377,7 @@ public class FunctionPlotter extends JPanel {
       private static final long serialVersionUID = 1L;
       @Override
       public void actionPerformed(ActionEvent e) {
-        zoomIn(new Point(getWidth()/2, getHeight()/2), 0.05);
+        zoom(new Point(getWidth() / 2, getHeight() / 2), -1);
         repaint();
       }
     });
@@ -369,7 +387,7 @@ public class FunctionPlotter extends JPanel {
       private static final long serialVersionUID = 1L;
       @Override
       public void actionPerformed(ActionEvent e) {
-        zoomOut(new Point(getWidth()/2, getHeight()/2), 0.0526315789473684);
+        zoom(new Point(getWidth() / 2, getHeight() / 2), 1);
         repaint();
       }
     });
@@ -424,8 +442,6 @@ public class FunctionPlotter extends JPanel {
     });
   }
   
-  private Point mouse = null;
-  
   private void registerMouseListener() {
     this.addMouseWheelListener(new MouseWheelListener() {
       @Override
@@ -434,10 +450,10 @@ public class FunctionPlotter extends JPanel {
         if (e.isControlDown())
           if (e.getWheelRotation()<0)
             for (int i = 0; i > e.getWheelRotation(); --i)
-              zoomIn(e.getPoint(), 0.05);
+              zoom(e.getPoint(), -1);
           else
             for (int i = 0; i < e.getWheelRotation(); ++i)
-              zoomOut(e.getPoint(), 0.0526315789473684);
+              zoom(e.getPoint(), 1);
         
         else if (e.isShiftDown())
           if (e.getWheelRotation()<0)
@@ -467,6 +483,11 @@ public class FunctionPlotter extends JPanel {
     });
     this.addMouseMotionListener(new MouseMotionAdapter() {
       @Override
+      public void mouseMoved(MouseEvent e) {
+        mouse = e.getPoint();
+        repaint();
+      }
+      @Override
       public void mouseDragged(MouseEvent e) {
         move(mouse, e.getPoint());
         repaint();
@@ -474,15 +495,28 @@ public class FunctionPlotter extends JPanel {
       }
       
     });
+
+    this.addMouseListener(new MouseAdapter() {
+      @Override
+      public void mouseEntered(MouseEvent e) {
+        mouse = e.getPoint();
+        repaint();
+      }
+      @Override
+      public void mouseExited(MouseEvent e) {
+        mouse = e.getPoint();
+        repaint();
+      }
+    });
   }
   private void registerWindowListeners() {
     this.addComponentListener(new ComponentAdapter() {
       @Override
       public void componentResized(ComponentEvent e) {
         if (!o.autoCenter)
-          reCalculateSpans();
+          updateSpans();
         else {
-          reCalculateSpans();
+          updateSpans();
         }
       }
       @Override
@@ -500,5 +534,87 @@ public class FunctionPlotter extends JPanel {
       super.repaint();
       renderTime = System.nanoTime()-renderTime;
     }
+  }
+  
+  private class DebugGUI implements DrawableComponent {
+    
+    private Color foreground;
+    private Color background;
+    
+    public DebugGUI(Color foreground, Color background) {
+      this.foreground = foreground;
+      this.background = background;
+    }
+
+    @Override
+    public void draw(Graphics gc, FunctionPlotter parent) {
+      if (!o.debug)
+        return;
+      
+      String[] info = {
+          "DEBUG INFO:",
+          "program_version   = \""+PolyPlot.VERSION+"\"",
+          "span_base         = \""+spanBase+"\"",
+          "span              = \""+span+"\"",
+          "span_x            = \""+spanX+"\"",
+          "span_y            = \""+spanY+"\"",
+          "x_corner          = \""+xCorner+"\"",
+          "y_corner          = \""+yCorner+"\"",
+          "value_per_x_pixel = \""+getValueXPerPixel()+"\"",
+          "value_per_y_pixel = \""+getValueYPerPixel()+"\"",
+          "zoom              = \""+zoom+"\"",
+          "zoom_base         = \""+zoomBase+"\"",
+          "power             = \""+pow+"\"",
+          "render_time       = \""+renderTime+"ns\"",
+      };
+      Font f = gc.getFont();
+      gc.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+      
+      int  i = 0;
+      for (String s : info) {
+        Rectangle2D rec = gc.getFontMetrics().getStringBounds(s, gc);
+        int width = gc.getFontMetrics().stringWidth(s);
+        int height = gc.getFontMetrics().getHeight();
+        int x = 0;
+        int y = (i+1)*height-5;
+        
+        gc.setColor(background);
+        gc.fillRect(x, y-height+3, width, height);
+        gc.setColor(foreground);
+        if (i == 0) {
+          Font f0 = gc.getFont();
+          gc.setFont(f0.deriveFont(Font.BOLD));
+          gc.drawString(s, 0, y);
+          gc.setFont(f0);
+        } else
+          gc.drawString(s, 0, y);
+        
+        ++i;
+      }
+      
+      gc.setFont(f);
+      
+    }
+
+    @Override
+    public void setForegroundColor(Color c) {
+      this.foreground = c;
+    }
+
+    @Override
+    public Color getForegroundColor() {
+      return foreground;
+    }
+    
+    @Override
+    public void setBackgroundColor(Color c) {
+      this.background = c;
+    }
+    
+    @Override
+    public Color getBackgroundColor() {
+      return background;
+    }
+    
   }
 }
