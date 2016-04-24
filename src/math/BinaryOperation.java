@@ -39,6 +39,10 @@ enum BinaryOperation implements ComparableOperator {
         return this.WEIGHT;
     }
 
+    public String getSign() {
+        return this.SIGN;
+    }
+
     /**
      * Is the operator left associative?
      * NOTE: Most operators are left associative, i.e. something like "1 - 2 - 3 - 4" is the same as

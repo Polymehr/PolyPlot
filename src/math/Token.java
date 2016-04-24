@@ -1,7 +1,6 @@
 package math;
 
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 /**
  * @author Gordian
@@ -12,57 +11,61 @@ final class Token {
         NUMBER, SYMBOL, BINARY_OPERATOR, UNARY_OPERATOR, OPENING_BRACKET, CLOSING_BRACKET, EQUALS_OPERATOR, COMMA
     }
 
-    private final Type TYPE;
-    private final String CONTENT;
+    private final Type type;
+    private final String content;
 
 
 
     private Token(Type type, String content) {
-        this.TYPE = Objects.requireNonNull(type, "token TYPE must not be null");
+        this.type = Objects.requireNonNull(type, "token type must not be null");
         if (Objects.requireNonNull(content, "token content must not be null").trim().isEmpty())
             throw new IllegalArgumentException("token content must not be empty");
-        this.CONTENT = content;
+        this.content = content;
     }
 
     public boolean isNumber() {
-        return this.TYPE == Type.NUMBER;
+        return this.type == Type.NUMBER;
     }
 
     public boolean isSymbol() {
-        return this.TYPE == Type.SYMBOL;
+        return this.type == Type.SYMBOL;
     }
 
     public boolean isBinaryOperator() {
-        return this.TYPE == Type.BINARY_OPERATOR;
+        return this.type == Type.BINARY_OPERATOR;
     }
 
     public boolean isUnaryOperator() {
-        return this.TYPE == Type.UNARY_OPERATOR;
+        return this.type == Type.UNARY_OPERATOR;
     }
 
     public boolean isOpeningBracket() {
-        return this.TYPE == Type.OPENING_BRACKET;
+        return this.type == Type.OPENING_BRACKET;
     }
 
     public boolean isClosingBracket() {
-        return this.TYPE == Type.CLOSING_BRACKET;
+        return this.type == Type.CLOSING_BRACKET;
     }
 
     public boolean isComma() {
-        return this.TYPE == Type.COMMA;
+        return this.type == Type.COMMA;
+    }
+
+    public boolean isEqualsOperator() {
+        return this.type == Type.EQUALS_OPERATOR;
     }
 
     public String getContent() {
-        return this.CONTENT;
+        return this.content;
     }
 
     public Type getType() {
-        return this.TYPE;
+        return this.type;
     }
 
     @Override
     public String toString() {
-        return "Token[TYPE="+this.TYPE+"; CONTENT="+this.CONTENT+"]";
+        return "Token[type="+this.type +"; content="+this.content +"]";
     }
 
     public static Token newNumberToken(String content) {

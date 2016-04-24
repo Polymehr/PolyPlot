@@ -12,12 +12,14 @@ public class CompilationContext {
     private final Map<String, Double> constants;
     private final Map<String, Function> functions;
 
-    private final static class PureFunctionAdapter implements Function {
+    private final static class PureFunctionAdapter implements Function, DoubleUnaryOperator {
 
         private final DoubleUnaryOperator operation;
+        private final String name;
 
-        PureFunctionAdapter(DoubleUnaryOperator operation) {
+        PureFunctionAdapter(DoubleUnaryOperator operation, String name) {
             this.operation = Objects.requireNonNull(operation, "pure function adaption operation null");
+            this.name = name;
         }
 
         @Override
@@ -29,6 +31,16 @@ public class CompilationContext {
         @Override
         public int getNumberOfArguments() {
             return 1;
+        }
+
+        @Override
+        public String toString() {
+            return name + "()";
+        }
+
+        @Override
+        public double applyAsDouble(double operand) {
+            return this.operation.applyAsDouble(operand);
         }
     }
 
@@ -54,6 +66,11 @@ public class CompilationContext {
             @Override
             public int getNumberOfArguments() {
                 return 2;
+            }
+
+            @Override
+            public String toString() {
+                return "atan2()";
             }
         });
         addPureFunction("cbrt", Math::cbrt);
@@ -86,7 +103,7 @@ public class CompilationContext {
     }
 
     public final void addPureFunction(String name, DoubleUnaryOperator function) {
-        this.addFunction(name, new PureFunctionAdapter(function));
+        this.addFunction(name, new PureFunctionAdapter(function, name));
     }
 
     public final void addConstant(String name, Double constant) {

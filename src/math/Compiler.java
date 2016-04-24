@@ -1,8 +1,7 @@
 package math;
 
-import me.polymehr.polyPlot.MathEval;
+import polyplot.MathEval;
 
-import javax.swing.plaf.FontUIResource;
 import java.util.*;
 import java.util.function.*;
 import java.util.regex.Matcher;
@@ -33,8 +32,13 @@ public final class Compiler {
 
     private final CompilationContext context;
 
-    public Compiler(CompilationContext context) {
+    private final boolean useFallbackParser;
+
+    private List<String> arguments = Collections.emptyList();
+
+    public Compiler(CompilationContext context, boolean useFallbackParser) {
         this.context = Objects.requireNonNull(context, "compilation context must not be null");
+        this.useFallbackParser = useFallbackParser;
     }
 
     private static List<Token> tokenize(String expression) {
@@ -254,8 +258,415 @@ public final class Compiler {
         tokens.addAll(stack);
     }
 
+    // recursive descent parser
+    // -> parses the following grammar into a syntax tree
+    // <digit>         ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+    // <unary_sign>    ::= "-" | "+"
+    // <number>        ::= [<digit>] | <function_call> | <symbol>
+    // <power>         ::= <number> | <number> "^" <factor>
+    // <factor>        ::= <power> | <unary_sign> <factor> | "(" <expression> ")"
+    // <product>       ::= <factor> | <factor> ("*" | "/" | "%") <product>
+    // <expression>    ::= <product> | <product> ("+" | "-")  <expression>
+    // <function_call> ::= <symbol> "(" <argument_list> ")"
+    // <argument_list> ::= <expression> {"," <expression>}
+    // <symbol>        ::= [<ascii_letter>]
+    // <function_def>  ::= <symbol> "(" <symbol_list> ")" "=" <expression>
+    // <symbol_list>   ::= <symbol> | <symbol> "," <symbol_list>
+    // # expression has to be constant
+    // <constant_def>  ::= <symbol> "=" <expression> | <symbol> "=" <constant_def>
+    // <definition>    ::= <function_def> | <constant_def>
+
+    private static class Node {
+        enum Type { CONSTANT, ARGUMENT, UNARY_OPERATION, BINARY_OPERATION, FUNCTION }
+
+        final Type type;
+        final double constant;
+        final DoubleUnaryOperator unaryOperation;
+        final DoubleBinaryOperator binaryOperation;
+        final Function function;
+
+        final Node left;
+        final Node right;
+
+        final List<Node> arguments;
+
+        final int argumentIndex;
+
+        private Node(Type type, double constant, DoubleUnaryOperator unaryOperation,
+                     DoubleBinaryOperator binaryOperation, Function function, Node left, Node right, List<Node> args,
+                     int argumentIndex) {
+            this.type = type;
+            this.constant = constant;
+            this.unaryOperation = unaryOperation;
+            this.binaryOperation = binaryOperation;
+            this.function = function;
+            this.left = left;
+            this.right = right;
+            this.arguments = args;
+            this.argumentIndex = argumentIndex;
+        }
+
+        Node(double constant) {
+            this(Type.CONSTANT, constant, null, null, null, null, null, null, -1);
+        }
+
+        Node(DoubleUnaryOperator unaryOperation, Node right) {
+            this(Type.UNARY_OPERATION, Double.NaN, unaryOperation, null, null, null, right, null, -1);
+            if (null == unaryOperation || null == right)
+                throw new IllegalStateException("trying to create node with null-operation or null-branches");
+        }
+
+        Node(DoubleBinaryOperator binaryOperation, Node left, Node right) {
+            this(Type.BINARY_OPERATION, Double.NaN, null, binaryOperation, null, left, right, null, -1);
+            if (null == binaryOperation || null == left || null == right)
+                throw new IllegalStateException("trying to create node with null-operation or null-branches");
+        }
+
+        Node(Function function, List<Node> args) {
+            this(Type.FUNCTION, Double.NaN, null, null, Objects.requireNonNull(function), null, null, args, -1);
+            if (args.isEmpty()) throw new IllegalStateException("trying to create node with zero-arg function");
+        }
+
+        Node(int argumentIndex) {
+            this(Type.ARGUMENT, Double.NaN, null, null, null, null, null, null, argumentIndex);
+            if (!(this.argumentIndex >= 0))
+                throw new IllegalStateException("argument index must be positive or zero");
+        }
+
+        boolean hasLeft() {
+            return this.left != null;
+        }
+
+        boolean hasRight() {
+            return this.right != null;
+        }
+
+        boolean hasLeftAndRight() {
+            return this.hasLeft() && this.hasRight();
+        }
+
+        boolean isConstant() {
+            switch (this.type) {
+                case CONSTANT: return true;
+                case UNARY_OPERATION: return this.right.isConstant();
+                case BINARY_OPERATION: return this.left.isConstant() && this.right.isConstant();
+                case FUNCTION:
+                    boolean result = true;
+                    for (Node n : this.arguments) if (!n.isConstant()) {
+                        result = false;
+                        break;
+                    }
+                    return result;
+                case ARGUMENT:
+                    return false;
+                default:
+                    throw new IllegalStateException("invalid node type");
+            }
+        }
+
+        double constantValue() {
+            if (!this.isConstant())
+                throw new IllegalStateException("trying to compute non-constant tree at compilation time");
+            switch (this.type) {
+                case CONSTANT: return this.constant;
+                case UNARY_OPERATION: return this.unaryOperation.applyAsDouble(this.right.constantValue());
+                case BINARY_OPERATION:
+                    return this.binaryOperation.applyAsDouble(this.left.constantValue(), this.right.constantValue());
+                case FUNCTION: {
+                    double[] args = new double[this.arguments.size()];
+                    int i = 0;
+                    for (Node arg : this.arguments) args[i++] = arg.constantValue();
+                    return this.function.of(args);
+                }
+                default: throw new IllegalStateException("invalid node type");
+            }
+        }
+
+        List<CompiledToken> compile() {
+            List<CompiledToken> result = new LinkedList<>();
+            if (this.isConstant()) result.add(CompiledToken.newNumberToken(this.constantValue()));
+            else {
+                switch (this.type) {
+                    case CONSTANT: throw new UnsupportedOperationException("constant detection not working correctly");
+                    case ARGUMENT:
+                        result.add(CompiledToken.newArgumentToken(this.argumentIndex));
+                        break;
+                    case UNARY_OPERATION:
+                        if (!this.hasRight())
+                            throw new IllegalStateException("unary operation without operand");
+                        result.addAll(this.right.compile());
+                        result.add(CompiledToken.newUnaryOperationToken(this.unaryOperation));
+                        break;
+                    case BINARY_OPERATION:
+                        if (!this.hasLeftAndRight())
+                            throw new IllegalStateException("binary operation with missing operands");
+                        result.addAll(this.left.compile());
+                        result.addAll(this.right.compile());
+                        result.add(CompiledToken.newBinaryOperation(this.binaryOperation));
+                        break;
+                    case FUNCTION:
+                        if (this.function instanceof DoubleUnaryOperator) {
+                            if (this.arguments.size() != 1)
+                                throw new IllegalStateException("argument list of unary function not equal to one: "
+                                        + this.function);
+                            result.addAll(this.arguments.get(0).compile());
+                            result.add(CompiledToken.newUnaryOperationToken((DoubleUnaryOperator) this.function));
+                        }
+                        else {
+                            if (this.arguments == null
+                                    || this.arguments.size() != this.function.getNumberOfArguments())
+                                throw new IllegalStateException("illegal number of arguments for function: "
+                                        + this.function);
+                            Collections.reverse(this.arguments);
+                            for (Node arg : this.arguments) result.addAll(arg.compile());
+                            result.add(CompiledToken.newFunction(this.function));
+                        }
+                        break;
+                } // end switch
+            } // end else
+            return result;
+        } // end compile()
+
+        @Override
+        public String toString() {
+            return this.compile().toString();
+        }
+    }
+
+    private Node number(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size()) throw new IllegalStateException("expected number, but expression ended");
+
+        final Token token = tokens.get(index.get());
+
+        if (index.get() < tokens.size()) index.set(index.get() + 1);
+        else throw new IllegalStateException("illegal end of expression");
+
+        if (token.isNumber()) return new Node(Double.parseDouble(token.getContent()));
+        else if (token.isSymbol()) {
+            final Token next = index.get() >= tokens.size() ? null : tokens.get(index.get());
+            if (next != null && next.isOpeningBracket()) { // function call
+                index.set(index.get() - 1);
+                return functionCall(tokens, index);
+            } else { // constant or argument
+                if (this.arguments.contains(token.getContent()))
+                    return new Node(this.arguments.indexOf(token.getContent()));
+                if (!this.context.hasConstant(token.getContent()))
+                    throw new IllegalStateException("non-existent constant: " + token.getContent());
+
+                return new Node(this.context.getConstant(token.getContent()));
+            }
+        } else {
+            throw new IllegalStateException("invalid number: "+token.getContent());
+        }
+    }
+
+    private Node functionCall(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected function call, but expression ended");
+
+        final Token token = tokens.get(index.get());
+        if (!token.isSymbol() || !this.context.hasFunction(token.getContent()))
+            throw new IllegalStateException("non-existent function: " + token.getContent());
+
+        if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+        else throw new IllegalStateException("expected opening bracket but expression ended");
+
+        final Token next = tokens.get(index.get());
+        if (!next.isOpeningBracket()) throw new IllegalStateException("illegal function call: " + token.getContent());
+
+        if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+        else throw new IllegalStateException("expected argument list but expression ended");
+
+        final List<Node> args = this.argumentList(tokens, index);
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected closing bracket, but expression ended");
+
+        if (!tokens.get(index.get()).isClosingBracket())
+            throw new IllegalStateException("expected closing bracket, but got: "
+                    + tokens.get(index.get()).getContent());
+
+        if (index.get() < tokens.size()) index.set(index.get() + 1);
+        else throw new IllegalStateException("illegal end of expression");
+
+        return new Node(this.context.getFunction(token.getContent()), args);
+    }
+
+    private List<Node> argumentList(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected argument list, but expression ended");
+
+        final List<Node> arguments = new LinkedList<>();
+        arguments.add(this.expression(tokens, index));
+        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+
+        if (tokens.get(index.get()).isComma()) {
+            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            else throw new IllegalStateException("expected argument, comma or closing bracket but expression ended");
+            arguments.addAll(this.argumentList(tokens, index));
+        }
+        return arguments;
+    }
+
+    private Node factor(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size()) throw new IllegalStateException("expected factor, but expression ended");
+
+        Token token = tokens.get(index.get());
+        if (token.isUnaryOperator()) {
+            UnaryOperation unaryOperator = UnaryOperation.ofSign(token.getContent());
+
+            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            else throw new IllegalStateException("expected factor but expression ended");
+
+            return new Node(unaryOperator.getOperation(), this.factor(tokens, index));
+        } else if (token.isOpeningBracket()) {
+            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            else throw new IllegalStateException("expected inner expression, but expression ended");
+
+            Node result = this.expression(tokens, index);
+            if (index.get() >= tokens.size())
+                throw new IllegalStateException("expected closing bracket, but expression ended");
+
+            if (!tokens.get(index.get()).isClosingBracket()) throw new IllegalStateException("missing closing bracket");
+
+            if (index.get() < tokens.size()) index.set(index.get() + 1);
+            else throw new IllegalStateException("illegal end of expression");
+
+            return result;
+        } else {
+            return this.power(tokens, index);
+        }
+    }
+
+    private Node power(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected exponential expression, but expression ended");
+        Node number = this.number(tokens, index);
+
+        if (index.get() >= tokens.size()
+                || !tokens.get(index.get()).getContent().equals(BinaryOperation.EXPONENTIATION.getSign()))
+            return number;
+
+        if (index.get() < tokens.size() - 1) index.set(index.get() + 1); // skip "^" and go to start of factor
+        else throw new IllegalStateException("expected factor, but expression ended");
+
+        Node factor = this.factor(tokens, index);
+
+        return new Node(BinaryOperation.EXPONENTIATION.getOperation(), number, factor);
+    }
+
+    private Node product(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size()) throw new IllegalStateException("expected product, but expression ended");
+        final Node factor = this.factor(tokens, index);
+
+        if (index.get() >= tokens.size()) return factor;
+        final Token next = tokens.get(index.get());
+
+        if ("/".equals(next.getContent()) || "*".equals(next.getContent()) || "%".equals(next.getContent())) {
+            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            else throw new IllegalStateException("expected factor or product, but expression ended");
+
+            return new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
+                    factor, // left
+                    this.product(tokens, index)); // right
+        } else return factor;
+    }
+
+    private Node expression(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected inner expression, but expression ended");
+        final Node product = this.product(tokens, index);
+
+        if (index.get() >= tokens.size()) return product;
+
+        final Token next = tokens.get(index.get());
+        if ("+".equals(next.getContent()) || "-".equals(next.getContent())) {
+            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            else throw new IllegalStateException("expected sum or factor, but expression ended");
+
+            return new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
+                    product, // left
+                    this.expression(tokens, index) ); // right
+        } else return product;
+    }
+
+    private String symbol(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size()) throw new IllegalStateException("expected symbol, but expression ended");
+        final Token token = tokens.get(index.get());
+
+        if (index.get() < tokens.size()) index.set(index.get() + 1);
+        else throw new IllegalStateException("illegal end of expression");
+
+        if (!token.isSymbol()) throw new IllegalStateException("expected symbol, but got: " + token.getContent());
+
+        return token.getContent();
+    }
+
+    private List<String> symbolList(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size()) throw new IllegalStateException("expected symbol list, but expression ended");
+
+        final List<String> result = new LinkedList<>();
+        result.add(this.symbol(tokens, index));
+
+        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+
+        if (tokens.get(index.get()).isComma()) {
+            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            else throw new IllegalStateException("excepted argument, but expression ended");
+            result.addAll(this.symbolList(tokens, index));
+        }
+
+        return result;
+    }
+
+    private Function functionDefinition(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected function definition, but expression ended");
+
+        final String name = this.symbol(tokens, index);
+        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+
+        if (!tokens.get(index.get()).isOpeningBracket())
+            throw new IllegalStateException("expected opening bracket, but got: "
+                    + tokens.get(index.get()).getContent());
+
+        if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+        else throw new IllegalStateException("expected symbol list, but expression ended");
+
+        final List<String> symbolList = this.symbolList(tokens, index);
+        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+
+        if (!tokens.get(index.get()).isClosingBracket())
+            throw new IllegalStateException("expected closing bracket, but got: "
+                    + tokens.get(index.get()).getContent());
+
+        if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+        else throw new IllegalStateException("expected equals operator, but expression ended");
+
+        if (!tokens.get(index.get()).isEqualsOperator())
+            throw new IllegalStateException("expected equals operator, but got: "
+                    + tokens.get(index.get()).getContent());
+
+        if (index.get() < tokens.size()) index.set(index.get() + 1);
+        else throw new IllegalStateException("illegal end of expression");
+
+        if (this.useFallbackParser) {
+            //TODO
+        } else {
+            this.arguments = symbolList;
+            final Node expression = this.expression(tokens, index);
+            this.arguments = Collections.emptyList();
+            System.err.println("NAME: " + name);
+            System.err.println("ARGUMENTS: " + symbolList);
+            System.err.println(expression.toString());
+        }
+        return null;
+    }
+
+
+    // / recursive descent parser
+
     public static void main(String[] args) {
-        Compiler c = new Compiler(new CompilationContext(true));
+        Compiler c = new Compiler(new CompilationContext(true), false);
         String testExpr = "2*3+a";
         List<CompiledToken> testExprRes = c.fallbackExpression(tokenize(testExpr), new MutableInteger(), 0, Arrays.asList("a"));
         System.out.println("TEST: " + testExprRes);
@@ -317,5 +728,8 @@ public final class Compiler {
         System.out.println("MY AVERAGE: "+ownAvg);
         System.out.println("OTHER AVERAGE: "+otherAvg);
 
+
+        List<Token> tokens = tokenize("function(x,y) = 4*x^2^(3-1)+33333+sin(y)+sin(1.234)");
+        c.functionDefinition(tokens, new MutableInteger());
     }
 }

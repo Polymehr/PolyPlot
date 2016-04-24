@@ -14,4 +14,9 @@ public class MutableInteger {
     public int get() {
         return this.i;
     }
+
+    @Override
+    public String toString() {
+        return Integer.toString(this.i);
+    }
 }
