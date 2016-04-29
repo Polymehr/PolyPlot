@@ -208,27 +208,27 @@ public final class Compiler {
     private static void optimize(List<CompiledToken> tokens) {
         final Stack<CompiledToken> stack = new Stack<>();
         for (CompiledToken token : tokens) {
-            switch (token.TYPE) {
+            switch (token.type) {
                 case NUMBER:
                 case ARGUMENT:
                     stack.push(token);
                     break;
                 case UNARY_OPERATION:
-                    if (!stack.isEmpty() && stack.peek().TYPE == CompiledToken.Type.NUMBER)
+                    if (!stack.isEmpty() && stack.peek().type == CompiledToken.Type.NUMBER)
                         stack.push(CompiledToken.newNumberToken(
-                                ((DoubleUnaryOperator) token.CONTENT).applyAsDouble(stack.pop().NUMBER)
+                                ((DoubleUnaryOperator) token.content).applyAsDouble(stack.pop().number)
                         ));
                     else stack.push(token);
                     break;
                 case BINARY_OPERATION:
-                    if (!stack.isEmpty() && stack.peek().TYPE == CompiledToken.Type.NUMBER) {
+                    if (!stack.isEmpty() && stack.peek().type == CompiledToken.Type.NUMBER) {
                         final CompiledToken arg1Token = stack.pop();
-                        if (!stack.isEmpty() && stack.peek().TYPE == CompiledToken.Type.NUMBER) {
+                        if (!stack.isEmpty() && stack.peek().type == CompiledToken.Type.NUMBER) {
                             final CompiledToken arg0Token = stack.pop();
-                            final double arg0 = arg0Token.NUMBER;
-                            final double arg1 = arg1Token.NUMBER;
+                            final double arg0 = arg0Token.number;
+                            final double arg1 = arg1Token.number;
                             stack.push(CompiledToken.newNumberToken(
-                                    ((DoubleBinaryOperator) token.CONTENT).applyAsDouble(arg0, arg1)
+                                    ((DoubleBinaryOperator) token.content).applyAsDouble(arg0, arg1)
                             ));
                         } else {
                             stack.push(arg1Token);
@@ -237,12 +237,12 @@ public final class Compiler {
                     } else stack.push(token);
                     break;
                 case FUNCTION: {
-                    Function f = (Function)token.CONTENT;
+                    Function f = (Function)token.content;
                     double[] args = new double[f.getNumberOfArguments()];
                     int i = 0;
                     for (; i < f.getNumberOfArguments(); ++i) {
-                        if (!stack.isEmpty() && stack.peek().TYPE == CompiledToken.Type.NUMBER)
-                            args[i] = stack.pop().NUMBER;
+                        if (!stack.isEmpty() && stack.peek().type == CompiledToken.Type.NUMBER)
+                            args[i] = stack.pop().number;
                         else break;
                     }
                     if (i == f.getNumberOfArguments()) {
@@ -260,6 +260,8 @@ public final class Compiler {
 
     // recursive descent parser
     // -> parses the following grammar into a syntax tree
+    // // [<...>] => one or more times
+    // // {<...>} => zero or more times
     // <digit>         ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
     // <unary_sign>    ::= "-" | "+"
     // <number>        ::= [<digit>] | <function_call> | <symbol>
