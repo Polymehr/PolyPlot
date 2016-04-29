@@ -22,23 +22,22 @@ public class PureFunction implements DoubleUnaryOperator, Function {
 
     public double of(double x) {
         for (CompiledToken token : this.postfix) {
-            switch (token.TYPE) {
-                case NUMBER: this.stack.push(token.NUMBER); break;
+            switch (token.type) {
+                case NUMBER: this.stack.push(token.number); break;
                 case ARGUMENT: this.stack.push(x); break;
                 case UNARY_OPERATION:
-                    this.stack.push(((DoubleUnaryOperator)token.CONTENT).applyAsDouble(this.stack.pop()));
+                    this.stack.push(((DoubleUnaryOperator)token.content).applyAsDouble(this.stack.pop()));
                     break;
                 case BINARY_OPERATION: {
                     Double arg1 = this.stack.pop();
                     Double arg0 = this.stack.pop();
-                    this.stack.push(((DoubleBinaryOperator)token.CONTENT).applyAsDouble(arg0, arg1));
+                    this.stack.push(((DoubleBinaryOperator)token.content).applyAsDouble(arg0, arg1));
                 } break;
                 case FUNCTION: {
-                    Function f = (Function)token.CONTENT;
-                    double[] args = new double[f.getNumberOfArguments()];
+                    ImpureFunction f = (ImpureFunction)token.content;
                     for (int i = 0, stop = f.getNumberOfArguments(); i < stop; ++i)
-                        args[i] = this.stack.pop();
-                    this.stack.push(f.of(args));
+                        f.args[i] = this.stack.pop();
+                    this.stack.push(f.ofStoredArgs());
                 } break;
             }
         }

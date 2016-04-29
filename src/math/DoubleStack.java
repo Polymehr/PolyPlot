@@ -5,7 +5,7 @@ import java.util.Arrays;
 /**
  * @author 5hir0kur0
  */
-class DoubleStack {
+final class DoubleStack {
     private double[] stack;
     private int top;
 
