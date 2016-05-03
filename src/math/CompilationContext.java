@@ -3,6 +3,7 @@ package math;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
 /**
@@ -18,8 +19,9 @@ public class CompilationContext {
         private final String name;
 
         PureFunctionAdapter(DoubleUnaryOperator operation, String name) {
-            this.operation = Objects.requireNonNull(operation, "pure function adaption operation null");
-            this.name = name;
+            this.operation = Objects.requireNonNull(operation, "pure function adapter operation must not be null");
+            this.name = Objects.requireNonNull(name, "function name must not be null");
+            if (this.name.trim().isEmpty()) throw new IllegalArgumentException("function name must not be empty");
         }
 
         @Override
@@ -35,12 +37,45 @@ public class CompilationContext {
 
         @Override
         public String toString() {
-            return name + "()";
+            return this.name + "[pure]()";
         }
 
         @Override
         public double applyAsDouble(double operand) {
             return this.operation.applyAsDouble(operand);
+        }
+    }
+
+    private final static class BiFunctionAdapter implements DoubleBinaryOperator, Function {
+
+        private final DoubleBinaryOperator operation;
+        private final String name;
+
+        BiFunctionAdapter(String name, DoubleBinaryOperator operation) {
+            this.operation = Objects.requireNonNull(operation, "binary function operation must not be null");
+            this.name = Objects.requireNonNull(name, "function name must not be null");
+            if (this.name.trim().isEmpty()) throw new IllegalArgumentException("function name must not be empty");
+        }
+
+        @Override
+        public double applyAsDouble(double left, double right) {
+            return this.operation.applyAsDouble(left, right);
+        }
+
+        @Override
+        public double of(double... args) {
+            if (args.length != 2) throw new IllegalStateException("illegal number of arguments");
+            return this.applyAsDouble(args[0], args[1]);
+        }
+
+        @Override
+        public int getNumberOfArguments() {
+            return 2;
+        }
+
+        @Override
+        public String toString() {
+            return this.name + "[bi]()";
         }
     }
 
@@ -55,24 +90,10 @@ public class CompilationContext {
         addPureFunction("acos", Math::acos);
         addPureFunction("asin", Math::asin);
         addPureFunction("atan", Math::atan);
-        addFunction("atan2", new Function() {
-            @Override
-            public double of(double... args) {
-                if (args.length != 2)
-                    throw new IllegalArgumentException("atan2 must have two arguments ("+args.length+" given)");
-                return Math.atan2(args[0], args[1]);
-            }
-
-            @Override
-            public int getNumberOfArguments() {
-                return 2;
-            }
-
-            @Override
-            public String toString() {
-                return "atan2()";
-            }
-        });
+        addBiFunction("atan2", Math::atan2);
+        addBiFunction("IEEEremainder", Math::IEEEremainder);
+        addBiFunction("max", Math::max);
+        addBiFunction("min", Math::min);
         addPureFunction("cbrt", Math::cbrt);
         addPureFunction("ceil", Math::ceil);
         addPureFunction("cos", Math::cos);
@@ -91,19 +112,24 @@ public class CompilationContext {
         addPureFunction("tan", Math::tan);
         addPureFunction("toDegrees", Math::toDegrees);
         addPureFunction("toRadians", Math::toRadians);
+        addPureFunction("ulp", Math::ulp);
     }
 
     public final void addFunction(String name, Function function) {
         if (Objects.requireNonNull(name, "function name must not be null").isEmpty())
             throw new IllegalArgumentException("function name must not be empty");
-        if (this.functions.containsKey(name))
+        if (this.functions.containsKey(name.toLowerCase()))
             throw new IllegalArgumentException("functions cannot be redefined, because the expression compiler works"
                     + " under the assumption that they are constant");
-        this.functions.put(name, Objects.requireNonNull(function, "function must not be null"));
+        this.functions.put(name.toLowerCase(), Objects.requireNonNull(function, "function must not be null"));
     }
 
     public final void addPureFunction(String name, DoubleUnaryOperator function) {
         this.addFunction(name, new PureFunctionAdapter(function, name));
+    }
+
+    public final void addBiFunction(String name, DoubleBinaryOperator function) {
+        this.addFunction(name, new BiFunctionAdapter(name, function));
     }
 
     public final void addConstant(String name, Double constant) {
@@ -111,25 +137,25 @@ public class CompilationContext {
             throw new IllegalArgumentException("constant name must not be empty");
         if (null == constant || Double.isInfinite(constant) || Double.isNaN(constant))
             throw new IllegalArgumentException("constant must not be null, NaN or infinite");
-        if (this.constants.containsKey(name))
+        if (this.constants.containsKey(name.toLowerCase()))
             throw new IllegalArgumentException("constants cannot be redefined, because the expression compiler works "
                     + "under the assumption that they are constant");
-        this.constants.put(name, constant);
+        this.constants.put(name.toLowerCase(), constant);
     }
 
     public Function getFunction(String name) {
-        return functions.get(name);
+        return functions.get(name.toLowerCase());
     }
 
     public Double getConstant(String name) {
-        return constants.get(name);
+        return constants.get(name.toLowerCase());
     }
 
     public boolean hasFunction(String name) {
-        return this.functions.containsKey(name);
+        return this.functions.containsKey(name.toLowerCase());
     }
 
     public boolean hasConstant(String name) {
-        return this.constants.containsKey(name);
+        return this.constants.containsKey(name.toLowerCase());
     }
 }

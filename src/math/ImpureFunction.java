@@ -1,8 +1,7 @@
 package math;
 
+import java.util.Arrays;
 import java.util.Objects;
-import java.util.function.DoubleBinaryOperator;
-import java.util.function.DoubleUnaryOperator;
 
 /**
  * @author 5hir0kur0
@@ -43,15 +42,15 @@ public final class ImpureFunction implements Function {
                     this.stack.push(this.args[token.index]);
                     break;
                 case UNARY_OPERATION:
-                    this.stack.push(((DoubleUnaryOperator)token.content).applyAsDouble(this.stack.pop()));
+                    this.stack.push(token.unaryOperator.applyAsDouble(this.stack.pop()));
                     break;
                 case BINARY_OPERATION: {
                     Double arg1 = this.stack.pop();
                     Double arg0 = this.stack.pop();
-                    this.stack.push(((DoubleBinaryOperator)token.content).applyAsDouble(arg0, arg1));
+                    this.stack.push(token.binaryOperator.applyAsDouble(arg0, arg1));
                 } break;
                 case FUNCTION: {
-                    ImpureFunction f = (ImpureFunction)token.content;
+                    final ImpureFunction f = token.function;
                     for (int i = 0, stop = f.getNumberOfArguments(); i < stop; ++i)
                         f.args[i] = this.stack.pop();
                     this.stack.push(f.ofStoredArgs());
@@ -70,6 +69,6 @@ public final class ImpureFunction implements Function {
 
     @Override
     public String toString() {
-        return this.name + "[" + this.numberOfArguments + "]";
+        return this.name + "[" + this.numberOfArguments + "]()" + "[[[" + Arrays.toString(this.postfix); //TODO: REMOVE LATER
     }
 }
