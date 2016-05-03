@@ -7,7 +7,7 @@ import java.util.function.DoubleUnaryOperator;
 /**
  * @author Gordian
  */
-public class PureFunction implements DoubleUnaryOperator, Function {
+public final class PureFunction implements DoubleUnaryOperator, Function {
     private final CompiledToken[] postfix;
     private final DoubleStack stack;
     private final String name;
@@ -25,16 +25,14 @@ public class PureFunction implements DoubleUnaryOperator, Function {
             switch (token.type) {
                 case NUMBER: this.stack.push(token.number); break;
                 case ARGUMENT: this.stack.push(x); break;
-                case UNARY_OPERATION:
-                    this.stack.push(((DoubleUnaryOperator)token.content).applyAsDouble(this.stack.pop()));
-                    break;
+                case UNARY_OPERATION: this.stack.push(token.unaryOperator.applyAsDouble(this.stack.pop())); break;
                 case BINARY_OPERATION: {
-                    Double arg1 = this.stack.pop();
-                    Double arg0 = this.stack.pop();
-                    this.stack.push(((DoubleBinaryOperator)token.content).applyAsDouble(arg0, arg1));
+                    final double arg1 = this.stack.pop();
+                    final double arg0 = this.stack.pop();
+                    this.stack.push(token.binaryOperator.applyAsDouble(arg0, arg1));
                 } break;
                 case FUNCTION: {
-                    ImpureFunction f = (ImpureFunction)token.content;
+                    ImpureFunction f = token.function;
                     for (int i = 0, stop = f.getNumberOfArguments(); i < stop; ++i)
                         f.args[i] = this.stack.pop();
                     this.stack.push(f.ofStoredArgs());
@@ -48,7 +46,7 @@ public class PureFunction implements DoubleUnaryOperator, Function {
 
     @Override
     public double applyAsDouble(double operand) {
-        return of(operand);
+        return this.of(operand);
     }
 
     @Override
@@ -65,6 +63,6 @@ public class PureFunction implements DoubleUnaryOperator, Function {
 
     @Override
     public String toString() {
-        return this.name + "[pure]";
+        return this.name + "[pure]()";
     }
 }

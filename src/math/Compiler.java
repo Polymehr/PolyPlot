@@ -29,6 +29,7 @@ public final class Compiler {
     private final static Pattern CLOSING_BRACKET = Pattern.compile("^[)\\]}]");
     private final static Pattern EQUALS_OPERATOR = Pattern.compile("^=");
     private final static Pattern COMMA_OPERATOR = Pattern.compile("^,");
+    private final static Pattern DEFINITON_SEPERATOR = Pattern.compile("\\s*;\\s*");
 
     private final CompilationContext context;
 
@@ -39,6 +40,15 @@ public final class Compiler {
     public Compiler(CompilationContext context, boolean useFallbackParser) {
         this.context = Objects.requireNonNull(context, "compilation context must not be null");
         this.useFallbackParser = useFallbackParser;
+    }
+
+    public void definition(String expression) {
+        String[] definitions = expression.split(DEFINITON_SEPERATOR.pattern());
+        for (String s : definitions) this.definition(tokenize(s), new MutableInteger());
+    }
+
+    public double constantExpression(String expression) {
+        return this.constantValue(tokenize(expression), new MutableInteger());
     }
 
     private static List<Token> tokenize(String expression) {
@@ -115,7 +125,7 @@ public final class Compiler {
                 if (top.isBinary())
                     result.add(CompiledToken.newBinaryOperation(((BinaryOperation) top).getOperation()));
                 else if (top.isUnary())
-                    result.add(CompiledToken.newUnaryOperationToken(((UnaryOperation)top).getOperation()));
+                    result.add(CompiledToken.newUnaryOperation(((UnaryOperation) top).getOperation()));
                 else
                     throw new IllegalStateException("token neither unary nor binary operation");
             }
@@ -129,7 +139,7 @@ public final class Compiler {
         for (int i = startIndex.get(); i < tokens.size(); ++i, startIndex.set(i)) {
             Token token = tokens.get(i);
             if      (token.isNumber()) {
-                result.add(CompiledToken.newNumberToken(Double.parseDouble(token.getContent())));
+                result.add(CompiledToken.newNumber(Double.parseDouble(token.getContent())));
             }
             else if (token.isSymbol()) {
                 if (i + 1 < tokens.size() && tokens.get(i + 1).isOpeningBracket()) { // token is a function
@@ -142,15 +152,18 @@ public final class Compiler {
                     if (null == f)
                         throw new IllegalArgumentException("invalid function: "+token.getContent());
                     if (f instanceof DoubleUnaryOperator)
-                        result.add(CompiledToken.newUnaryOperationToken(((DoubleUnaryOperator)f)));
-                    else
-                        result.add(CompiledToken.newFunction(f));
+                        result.add(CompiledToken.newUnaryOperation((DoubleUnaryOperator) f));
+                    else if (f instanceof  DoubleBinaryOperator)
+                        result.add(CompiledToken.newBinaryOperation((DoubleBinaryOperator) f));
+                    else if (f instanceof ImpureFunction)
+                        result.add(CompiledToken.newFunction((ImpureFunction) f));
+                    else throw new IllegalStateException("illegal function class: " + f.getClass().getName());
                 } else if (args.contains(token.getContent())){ // token is an argument
-                    result.add(CompiledToken.newArgumentToken(args.indexOf(token.getContent())));
+                    result.add(CompiledToken.newArgument(args.indexOf(token.getContent())));
                 } else { // token is a constant
                     Double constant = this.context.getConstant(token.getContent());
                     if (null == constant) throw new IllegalArgumentException("invalid constant: "+token.getContent());
-                    result.add(CompiledToken.newNumberToken(constant));
+                    result.add(CompiledToken.newNumber(constant));
                 }
             }
             else if (token.isOpeningBracket()) {
@@ -184,7 +197,7 @@ public final class Compiler {
                 commaResultStack.push(new ArrayList<>(result));
                 result.clear();
             }
-            else throw new IllegalArgumentException("invalid token: "+token);
+            else throw new IllegalArgumentException("invalid token: " + token);
         }
 
         addRemainingElementsToResult.apply(() -> !stack.isEmpty());
@@ -215,9 +228,7 @@ public final class Compiler {
                     break;
                 case UNARY_OPERATION:
                     if (!stack.isEmpty() && stack.peek().type == CompiledToken.Type.NUMBER)
-                        stack.push(CompiledToken.newNumberToken(
-                                ((DoubleUnaryOperator) token.content).applyAsDouble(stack.pop().number)
-                        ));
+                        stack.push(CompiledToken.newNumber(token.unaryOperator.applyAsDouble(stack.pop().number)));
                     else stack.push(token);
                     break;
                 case BINARY_OPERATION:
@@ -227,9 +238,7 @@ public final class Compiler {
                             final CompiledToken arg0Token = stack.pop();
                             final double arg0 = arg0Token.number;
                             final double arg1 = arg1Token.number;
-                            stack.push(CompiledToken.newNumberToken(
-                                    ((DoubleBinaryOperator) token.content).applyAsDouble(arg0, arg1)
-                            ));
+                            stack.push(CompiledToken.newNumber(token.binaryOperator.applyAsDouble(arg0, arg1)));
                         } else {
                             stack.push(arg1Token);
                             stack.push(token);
@@ -237,18 +246,20 @@ public final class Compiler {
                     } else stack.push(token);
                     break;
                 case FUNCTION: {
-                    Function f = (Function)token.content;
-                    double[] args = new double[f.getNumberOfArguments()];
+                    final ImpureFunction f = token.function;
                     int i = 0;
                     for (; i < f.getNumberOfArguments(); ++i) {
                         if (!stack.isEmpty() && stack.peek().type == CompiledToken.Type.NUMBER)
-                            args[i] = stack.pop().number;
+                            f.args[i] = stack.pop().number;
                         else break;
                     }
                     if (i == f.getNumberOfArguments()) {
-                        stack.push(CompiledToken.newNumberToken(f.of(args)));
+                        stack.push(CompiledToken.newNumber(f.ofStoredArgs()));
                     } else { // if not all args were constant, push them back onto the stack
-                        while (--i >= 0) stack.push(CompiledToken.newNumberToken(args[i]));
+                        while (--i >= 0) {
+                            stack.push(CompiledToken.newNumber(f.args[i]));
+                            f.args[i] = Double.NaN;
+                        }
                         stack.push(token);
                     }
                 }
@@ -267,8 +278,8 @@ public final class Compiler {
     // <number>        ::= [<digit>] | <function_call> | <symbol>
     // <power>         ::= <number> | <number> "^" <factor>
     // <factor>        ::= <power> | <unary_sign> <factor> | "(" <expression> ")"
-    // <product>       ::= <factor> | <factor> ("*" | "/" | "%") <product>
-    // <expression>    ::= <product> | <product> ("+" | "-")  <expression>
+    // <product>       ::= <factor> {("*" | "/" | "%") <factor>}
+    // <expression>    ::= <product> {("+" | "-")  <product>}
     // <function_call> ::= <symbol> "(" <argument_list> ")"
     // <argument_list> ::= <expression> {"," <expression>}
     // <symbol>        ::= [<ascii_letter>]
@@ -386,18 +397,18 @@ public final class Compiler {
 
         List<CompiledToken> compile() {
             List<CompiledToken> result = new LinkedList<>();
-            if (this.isConstant()) result.add(CompiledToken.newNumberToken(this.constantValue()));
+            if (this.isConstant()) result.add(CompiledToken.newNumber(this.constantValue()));
             else {
                 switch (this.type) {
                     case CONSTANT: throw new UnsupportedOperationException("constant detection not working correctly");
                     case ARGUMENT:
-                        result.add(CompiledToken.newArgumentToken(this.argumentIndex));
+                        result.add(CompiledToken.newArgument(this.argumentIndex));
                         break;
                     case UNARY_OPERATION:
                         if (!this.hasRight())
                             throw new IllegalStateException("unary operation without operand");
                         result.addAll(this.right.compile());
-                        result.add(CompiledToken.newUnaryOperationToken(this.unaryOperation));
+                        result.add(CompiledToken.newUnaryOperation(this.unaryOperation));
                         break;
                     case BINARY_OPERATION:
                         if (!this.hasLeftAndRight())
@@ -412,17 +423,25 @@ public final class Compiler {
                                 throw new IllegalStateException("argument list of unary function not equal to one: "
                                         + this.function);
                             result.addAll(this.arguments.get(0).compile());
-                            result.add(CompiledToken.newUnaryOperationToken((DoubleUnaryOperator) this.function));
+                            result.add(CompiledToken.newUnaryOperation((DoubleUnaryOperator) this.function));
+                        } else if (this.function instanceof  DoubleBinaryOperator) {
+                            if (this.arguments.size() != 2)
+                                throw new IllegalStateException("argument list of binary function not equal to two: "
+                                        + this.function);
+                            result.addAll(this.arguments.get(0).compile());
+                            result.addAll(this.arguments.get(1).compile());
+                            result.add(CompiledToken.newBinaryOperation((DoubleBinaryOperator) this.function));
                         }
-                        else {
+                        else if (this.function instanceof ImpureFunction){
                             if (this.arguments == null
                                     || this.arguments.size() != this.function.getNumberOfArguments())
                                 throw new IllegalStateException("illegal number of arguments for function: "
                                         + this.function);
                             Collections.reverse(this.arguments);
                             for (Node arg : this.arguments) result.addAll(arg.compile());
-                            result.add(CompiledToken.newFunction(this.function));
-                        }
+                            result.add(CompiledToken.newFunction((ImpureFunction) this.function));
+                        } else throw new IllegalStateException("illegal function class: "
+                                    + this.function.getClass().getName());
                         break;
                 } // end switch
             } // end else
@@ -558,37 +577,48 @@ public final class Compiler {
 
     private Node product(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size()) throw new IllegalStateException("expected product, but expression ended");
-        final Node factor = this.factor(tokens, index);
+        Node result = this.factor(tokens, index);
 
-        if (index.get() >= tokens.size()) return factor;
-        final Token next = tokens.get(index.get());
+        if (index.get() >= tokens.size()) return result;
 
-        if ("/".equals(next.getContent()) || "*".equals(next.getContent()) || "%".equals(next.getContent())) {
+        Token next = tokens.get(index.get());
+        while (BinaryOperation.DIVISION.getSign().equals(next.getContent()) ||
+               BinaryOperation.MULTIPLICATION.getSign().equals(next.getContent()) ||
+               BinaryOperation.MODULUS.getSign().equals(next.getContent())) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected factor or product, but expression ended");
+            else throw new IllegalStateException("expected factor, but expression ended");
 
-            return new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
-                    factor, // left
-                    this.product(tokens, index)); // right
-        } else return factor;
+            result = new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
+                    result,
+                    this.factor(tokens, index));
+
+            if (index.get() < tokens.size()) next = tokens.get(index.get());
+            else break;
+        }
+        return result;
     }
 
     private Node expression(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
             throw new IllegalStateException("expected inner expression, but expression ended");
-        final Node product = this.product(tokens, index);
+        Node result = this.product(tokens, index);
 
-        if (index.get() >= tokens.size()) return product;
+        if (index.get() >= tokens.size()) return result;
 
-        final Token next = tokens.get(index.get());
-        if ("+".equals(next.getContent()) || "-".equals(next.getContent())) {
+        Token next = tokens.get(index.get());
+        while (BinaryOperation.PLUS.getSign().equals(next.getContent()) ||
+               BinaryOperation.MINUS.getSign().equals(next.getContent())) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected sum or factor, but expression ended");
+            else throw new IllegalStateException("expected product, but expression ended");
 
-            return new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
-                    product, // left
-                    this.expression(tokens, index) ); // right
-        } else return product;
+            result = new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
+                    result,
+                    this.product(tokens, index));
+
+            if (index.get() < tokens.size()) next = tokens.get(index.get());
+            else break;
+        }
+        return result;
     }
 
     private String symbol(List<Token> tokens, MutableInteger index) {
@@ -651,17 +681,86 @@ public final class Compiler {
         if (index.get() < tokens.size()) index.set(index.get() + 1);
         else throw new IllegalStateException("illegal end of expression");
 
+        List<CompiledToken> compiled;
         if (this.useFallbackParser) {
-            //TODO
+            compiled = this.fallbackExpression(tokens, index, 0, symbolList);
         } else {
             this.arguments = symbolList;
             final Node expression = this.expression(tokens, index);
             this.arguments = Collections.emptyList();
-            System.err.println("NAME: " + name);
-            System.err.println("ARGUMENTS: " + symbolList);
-            System.err.println(expression.toString());
+            compiled = expression.compile();
         }
-        return null;
+
+        CompiledToken[] compiledTokens = compiled.toArray(new CompiledToken[compiled.size()]);
+
+        Function f =  this.arguments.size() == 1 ?
+                new PureFunction(compiledTokens, name) :
+                new ImpureFunction(symbolList.size(), compiledTokens, name);
+
+        this.context.addFunction(name, f);
+
+        return f;
+    }
+
+    private double constantValue(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected constant definition, but expression ended");
+
+        final List<CompiledToken> compiled;
+        if (this.useFallbackParser)
+            compiled = this.fallbackExpression(tokens, index, 0, Collections.emptyList());
+        else {
+            this.arguments = Collections.emptyList();
+            Node expression = expression(tokens, index);
+            compiled = expression.compile();
+        }
+
+        if (compiled.size() != 1) throw new IllegalStateException("expected constant expression");
+
+        CompiledToken token = compiled.get(0);
+        if (token.type != CompiledToken.Type.NUMBER)
+            throw new IllegalStateException("expected number, but got: " + token);
+
+        return token.number;
+    }
+
+    private double constantDefinition(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected constant definition, but expression ended");
+
+        final String name = this.symbol(tokens, index);
+        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+
+        if (!tokens.get(index.get()).isEqualsOperator())
+            throw new IllegalStateException("expected equals sign, but got: " + tokens.get(index.get()));
+        index.set(index.get() + 1);
+        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+
+        final double value;
+        final Token tmpNext = tokens.get(index.get());
+        if (tmpNext.isSymbol() && !this.context.hasConstant(tmpNext.getContent()))
+            value = this.constantDefinition(tokens, index);
+        else value = constantValue(tokens, index);
+
+        this.context.addConstant(name, value);
+
+        return value;
+    }
+
+    private void definition(List<Token> tokens, MutableInteger index) {
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected definition, but expression ended");
+
+        final int oldIndex = index.get();
+        final String tmpSymbol = this.symbol(tokens, index);
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected '=' or an opening bracket, but the expression ended");
+
+        final Token tmpNext = tokens.get(index.get());
+        index.set(oldIndex);
+        if (tmpNext.isEqualsOperator()) this.constantDefinition(tokens, index);
+        else if (tmpNext.isOpeningBracket()) this.functionDefinition(tokens, index);
+        else throw new IllegalStateException("expected '=' or an opening bracket, but got: " + tmpNext);
     }
 
 
@@ -669,8 +768,8 @@ public final class Compiler {
 
     public static void main(String[] args) {
         Compiler c = new Compiler(new CompilationContext(true), false);
-        String testExpr = "2*3+a";
-        List<CompiledToken> testExprRes = c.fallbackExpression(tokenize(testExpr), new MutableInteger(), 0, Arrays.asList("a"));
+        String testExpr = "a + 2*3";
+        List<CompiledToken> testExprRes = c.fallbackExpression(tokenize(testExpr), new MutableInteger(), 0, Collections.singletonList("a"));
         System.out.println("TEST: " + testExprRes);
         PureFunction funnn = new PureFunction(testExprRes.toArray(new CompiledToken[testExprRes.size()]), "fun");
         System.out.println(funnn.of(1));
@@ -733,5 +832,49 @@ public final class Compiler {
 
         List<Token> tokens = tokenize("function(x,y) = 4*x^2^(3-1)+33333+sin(y)+sin(1.234)");
         c.functionDefinition(tokens, new MutableInteger());
+
+        System.out.println(c.constantExpression("((42+(23^2-3*4/(3+2))%222/((3+2*2)/1))/(42+(23^2-3*4/(3+2))%222/((3+2*2)/1)))+5"));
+
+        final String term = "sin(atan2(arg1, arg2*2^3 + arg1 / ( tan(1 + arg2) % 42 )) - "
+                        + "++1++1++1++1++1++1++1++1++1++1++1+++++++---------+++++++++arg3/arg4) /arg5^"
+                        + "(arg1 * log(PI % atan(arg3))^arg2 / 1 / 1 / 1 / 1 / 1 * 2 / (1 + 1 - 1 + 1 - 1 + (1*1*1*1*(2^2^3)))*"
+                        + "sqrt(42) / sqrt(3*arg2^arg3*arg1))";
+        final String theUltimateTestExpression = "leFunction(arg1, arg2, arg3, arg4, arg5) = " + term;
+        System.out.println(theUltimateTestExpression);
+        List<CompiledToken> fallbackResult = c.fallbackExpression(tokenize(term), new MutableInteger(), 0,
+                Arrays.asList("arg1", "arg2", "arg3", "arg4", "arg5"));
+        System.out.println("lefunction(1,2,3,4,5[FALLBACK] = " + new ImpureFunction(5, fallbackResult.toArray(new CompiledToken[fallbackResult.size()]), "ledäschd").of(1, 2, 3, 4, 5));
+
+        c.definition("x = y = z =((42+(23^2-3*4/(3+2))%222/((3+2*2)/1))/(42+(23^2-3*4/(3+2))%222/((3+2*2)/1)))+5;"
+                + theUltimateTestExpression);
+
+        System.err.println("recursively optimized: " + c.context.getFunction("lefunction"));
+
+        System.err.println("lefunction(1,2,3,4,5) = " + c.context.getFunction("lefunction").of(1, 2, 3, 4, 5));
+
+        System.out.println("______________________________________________________________________________");
+
+        c.definition("f(x) = lefunction(1,2,3,4,x)");
+        System.out.println(c.context.getFunction("f"));
+
+        c.definition("test(a,b,c,d) = d - c - b - a");
+        System.out.println(c.context.getFunction("test"));
+        System.out.println(c.constantExpression("test(1,2,3,4)"));
+        System.out.println(c.fallbackExpression(tokenize("test(1,2,3,4)"), new MutableInteger(), 0, Collections.emptyList()));
+        System.out.println(c.fallbackExpression(tokenize("1+2+3+4"), new MutableInteger(), 0, Collections.emptyList()));
+        c.definition("asdf(x) = 1/2/3/4");
+        System.out.println(c.context.getFunction("asdf"));
+
+        System.out.println("-----------------------------------------------------------------------");
+        System.out.println("fallback param order test: " + c.fallbackExpression(tokenize("lefunction(a,b,c,d,e)"), new MutableInteger(), 0, Arrays.asList("a", "b", "c", "d", "e")));
+        c.arguments = Arrays.asList("a", "b", "c", "d", "e");
+        System.out.println("recursive param order test: " + c.expression(tokenize("lefunction(a,b,c,d,e)"), new MutableInteger()));
+        c.arguments = Collections.emptyList();
+        System.out.println("fallback param order test: " + c.fallbackExpression(tokenize("sin(b)/a/c-d-e"), new MutableInteger(), 0, Arrays.asList("a", "b", "c", "d", "e")));
+        c.arguments = Arrays.asList("a", "b", "c", "d", "e");
+        System.out.println("recursive param order test: " + c.expression(tokenize("sin(b)/a/c-d-e"), new MutableInteger()));
+        c.arguments = Collections.emptyList();
+
+        System.out.println("2^3^4 = " + c.fallbackExpression(tokenize("2^3^4"), new MutableInteger(), 0, Collections.emptyList()));
     }
 }
