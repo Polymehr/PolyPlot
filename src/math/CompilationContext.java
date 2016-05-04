@@ -44,6 +44,11 @@ public class CompilationContext {
         public double applyAsDouble(double operand) {
             return this.operation.applyAsDouble(operand);
         }
+
+        @Override
+        public String getName() {
+            return this.name;
+        }
     }
 
     private final static class BiFunctionAdapter implements DoubleBinaryOperator, Function {
@@ -76,6 +81,11 @@ public class CompilationContext {
         @Override
         public String toString() {
             return this.name + "[bi]()";
+        }
+
+        @Override
+        public String getName() {
+            return this.name;
         }
     }
 

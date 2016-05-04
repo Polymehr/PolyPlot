@@ -1,5 +1,6 @@
 package math;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
@@ -63,6 +64,11 @@ public final class PureFunction implements DoubleUnaryOperator, Function {
 
     @Override
     public String toString() {
-        return this.name + "[pure]()";
+        return this.name + "[pure]()" + "=" + Arrays.toString(this.postfix); //TODO remove postfix
+    }
+
+    @Override
+    public String getName() {
+        return this.name;
     }
 }
