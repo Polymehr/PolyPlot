@@ -1,9 +1,6 @@
 package polyplot.graphics;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Point;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -34,21 +31,21 @@ import polyplot.functions.properties.Poles;
 public class FunctionPlotter extends JPanel {
 
   private static final long serialVersionUID = 1L;
-  long renderTime;
+
+  private long renderTime;
   
-  HashMap<Function, Color> functions;
+  private HashMap<Function, Color> functions;
   private List<DrawableComponent> toDraw;
+  private List<DrawableComponent> overlayComponents;
   
   Options o;
-  private OverlayPainter op;
+
+
+  private double xCorner;
+  private double yCorner;
   
-  
-  double xCorner;
-  
-  double yCorner;
-  
-  final double spanBase;
-  double span, spanX, spanY;
+  private final double spanBase;
+  private double span, spanX, spanY;
   
   private Point mouse;
   
@@ -62,24 +59,27 @@ public class FunctionPlotter extends JPanel {
   public FunctionPlotter(double span) {
     if (span <= 0)
       throw new IllegalArgumentException("Span cannot be negative or zero!");
+    this.setLayout(new BorderLayout());
     
     this.span = spanBase = span;
     
     
     yCorner = -(span/2);
     xCorner = -(span/2);
-    
-    op = new OverlayPainter(this);
+
     o = new Options();
     
     registerKeyBindings();
     registerMouseListener();
     
-    functions = new HashMap<Function, Color>();
+    functions = new HashMap<>();
+
     toDraw = new LinkedList<>();
+    overlayComponents = new LinkedList<>();
     toDraw.add(new Scale(o.scaleColor));
-    toDraw.add(new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, 500));
-    toDraw.add(this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0)));
+    overlayComponents.add(new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, 500));
+    overlayComponents.add(this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0)));
+
     mouse = null;
     
     zoom = 0;
@@ -87,7 +87,10 @@ public class FunctionPlotter extends JPanel {
     
     updateSpans();
     updatePow();
-    
+
+    addFunction(FunctionUtil.getFunctionByTerm("sin(x)"));
+    addFunction(FunctionUtil.getFunctionByTerm("cos(x)"));
+
   }
   
   
@@ -195,7 +198,7 @@ public class FunctionPlotter extends JPanel {
 
 
   @Override
-  public void paint(Graphics g) {
+  public void paintComponent(Graphics g) {
     updateSpans();
 //    xCorner+=5;
 //    yCorner+=5;
@@ -203,13 +206,20 @@ public class FunctionPlotter extends JPanel {
     g.fillRect(0, 0, getWidth(), getHeight());
     
     drawFunctions(g);
-    op.drawOverlay(g);
-    
+
     for (DrawableComponent dc : toDraw) {
       dc.draw(g, this);
     }
-    
-    
+
+    paintOverlay(g, false);
+
+  }
+
+  private void paintOverlay(Graphics gc, boolean useCache) {
+    for (DrawableComponent dc : overlayComponents) {
+      dc.draw(gc, this);
+    }
+
   }
   
 
@@ -320,7 +330,18 @@ public class FunctionPlotter extends JPanel {
     int x1 = getPixelToXValue(vx), y1 = getPixelToYValue(vy);
     
     move(new Point(x1, y1), center);
-    
+  }
+
+  public void setZoom(Point center, int newValue) {
+    int y0 = center.y, x0 = center.x;
+
+    double vy = getValueOfYPixel(y0), vx = getValueOfXPixel(x0);
+
+    span = spanBase * Math.pow(zoomBase, zoom = newValue);
+    updateSpans();
+    int x1 = getPixelToXValue(vx), y1 = getPixelToYValue(vy);
+
+    move(new Point(x1, y1), center);
   }
   
   private void updateSpans() {
@@ -391,7 +412,41 @@ public class FunctionPlotter extends JPanel {
         repaint();
       }
     });
-    
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS,
+            InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "zoomInFast");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ADD,
+            InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "zoomInFast");
+    action.put("zoomInFast", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        zoom(new Point(getWidth() / 2, getHeight() / 2), -10);
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS,
+            InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "zoomOutFast");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT,
+            InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "zoomOutFast");
+    action.put("zoomOutFast", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        zoom(new Point(getWidth() / 2, getHeight() / 2), 10);
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK), "zoomReset");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD0, InputEvent.CTRL_DOWN_MASK), "zoomReset");
+    action.put("zoomReset", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        setZoom(new Point(getWidth() / 2, getHeight() / 2), 0);
+        repaint();
+      }
+    });
+
     input.put(KeyStroke.getKeyStroke(KeyEvent.VK_I, 0), "toggleInfo");
     action.put("toggleInfo", new AbstractAction() {
       private static final long serialVersionUID = 1L;
@@ -437,6 +492,97 @@ public class FunctionPlotter extends JPanel {
       @Override
       public void actionPerformed(ActionEvent e) {
         o.debug = !o.debug;
+        repaint();
+      }
+    });
+
+
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "left");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0), "left");
+    action.put("left", new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            move(new Point(), new Point((int) +(getWidth()*0.1), 0));
+            repaint();
+        }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK), "leftSlow");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.SHIFT_DOWN_MASK), "leftSlow");
+    action.put("leftSlow", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point(+1, 0));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "right");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, 0), "right");
+    action.put("right", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point((int) -(getWidth()*0.1), 0));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK), "rightSlow");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.SHIFT_DOWN_MASK), "rightSlow");
+    action.put("rightSlow", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point(-1, 0));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "up");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, 0), "up");
+    action.put("up", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point(0, (int) +(getHeight()*0.1)));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, InputEvent.SHIFT_DOWN_MASK), "upSlow");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.SHIFT_DOWN_MASK), "upSlow");
+    action.put("upSlow", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point(0, +1));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "down");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, 0), "down");
+    action.put("down", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point(0, (int) -(getHeight()*0.1)));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, InputEvent.SHIFT_DOWN_MASK), "downSlow");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.SHIFT_DOWN_MASK), "downSlow");
+    action.put("downSlow", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(), new Point(0, -1));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD0, 0), "centerYAxis");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_0, 0), "centerYAxis");
+    action.put("centerYAxis", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(getPixelToXValue(0.0), 0), new Point(getWidth()/2, 0));
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, 0), "centerToOrigin");
+    action.put("centerToOrigin", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        move(new Point(getPixelToXValue(0.0), getPixelToYValue(0.0)), new Point(getWidth()/2, getHeight()/2));
         repaint();
       }
     });
@@ -518,10 +664,6 @@ public class FunctionPlotter extends JPanel {
         else {
           updateSpans();
         }
-      }
-      @Override
-      public void componentHidden(ComponentEvent e) {
-       System.out.println("Hi.");
       }
     });
   }
