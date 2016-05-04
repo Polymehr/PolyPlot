@@ -29,7 +29,7 @@ public final class Compiler {
     private final static Pattern CLOSING_BRACKET = Pattern.compile("^[)\\]}]");
     private final static Pattern EQUALS_OPERATOR = Pattern.compile("^=");
     private final static Pattern COMMA_OPERATOR = Pattern.compile("^,");
-    private final static Pattern DEFINITON_SEPERATOR = Pattern.compile("\\s*;\\s*");
+    private final static Pattern DEFINITION_SEPARATOR = Pattern.compile("\\s*;\\s*");
 
     private final CompilationContext context;
 
@@ -43,7 +43,7 @@ public final class Compiler {
     }
 
     public void definition(String expression) {
-        String[] definitions = expression.split(DEFINITON_SEPERATOR.pattern());
+        String[] definitions = expression.split(DEFINITION_SEPARATOR.pattern());
         for (String s : definitions) this.definition(tokenize(s), new MutableInteger());
     }
 
@@ -112,6 +112,7 @@ public final class Compiler {
         return result;
     }
 
+    private int numArgs = 0;  // used by fallbackExpression to count arguments
     private List<CompiledToken> fallbackExpression(List<Token> tokens,
                                                    MutableInteger startIndex,
                                                    int brackets,
@@ -144,19 +145,30 @@ public final class Compiler {
             else if (token.isSymbol()) {
                 if (i + 1 < tokens.size() && tokens.get(i + 1).isOpeningBracket()) { // token is a function
                     ++i;
-                    List<CompiledToken> recursiveRes = fallbackExpression(tokens, startIndex.set(++i),
+                    final int oldArgs = this.numArgs;
+                    this.numArgs = 1;
+                    List<CompiledToken> recursiveRes = fallbackExpression(tokens, startIndex.set(i + 1),
                             brackets + 1, args);
+                    final int newArgs = this.numArgs;
+                    this.numArgs = oldArgs;
                     i = startIndex.get();
                     result.addAll(recursiveRes);
                     Function f = this.context.getFunction(token.getContent());
                     if (null == f)
                         throw new IllegalArgumentException("invalid function: "+token.getContent());
+                    if (newArgs != f.getNumberOfArguments())
+                        throw new IllegalStateException("invalid number of arguments for function " + f.getName()
+                                + ": " + this.numArgs);
                     if (f instanceof DoubleUnaryOperator)
                         result.add(CompiledToken.newUnaryOperation((DoubleUnaryOperator) f));
-                    else if (f instanceof  DoubleBinaryOperator)
-                        result.add(CompiledToken.newBinaryOperation((DoubleBinaryOperator) f));
+                    // can't be supported, because the argument order would have to be different
+                    //else if (f instanceof  DoubleBinaryOperator)
+                    //    result.add(CompiledToken.newBinaryOperation((DoubleBinaryOperator) f));
                     else if (f instanceof ImpureFunction)
                         result.add(CompiledToken.newFunction((ImpureFunction) f));
+                    else if (f instanceof DoubleBinaryOperator)
+                        throw new IllegalStateException("binary operator functions are currently not supported by "
+                                + "the fallback parser (remove function: " + f.getName() + ")");
                     else throw new IllegalStateException("illegal function class: " + f.getClass().getName());
                 } else if (args.contains(token.getContent())){ // token is an argument
                     result.add(CompiledToken.newArgument(args.indexOf(token.getContent())));
@@ -196,6 +208,7 @@ public final class Compiler {
                 addRemainingElementsToResult.apply(() -> !stack.isEmpty());
                 commaResultStack.push(new ArrayList<>(result));
                 result.clear();
+                ++this.numArgs;
             }
             else throw new IllegalArgumentException("invalid token: " + token);
         }
@@ -275,9 +288,9 @@ public final class Compiler {
     // // {<...>} => zero or more times
     // <digit>         ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
     // <unary_sign>    ::= "-" | "+"
-    // <number>        ::= [<digit>] | <function_call> | <symbol>
+    // <number>        ::= [<digit>] | <function_call> | <symbol> | "(" <expression> ")"
     // <power>         ::= <number> | <number> "^" <factor>
-    // <factor>        ::= <power> | <unary_sign> <factor> | "(" <expression> ")"
+    // <factor>        ::= <power> | <unary_sign> <factor>
     // <product>       ::= <factor> {("*" | "/" | "%") <factor>}
     // <expression>    ::= <product> {("+" | "-")  <product>}
     // <function_call> ::= <symbol> "(" <argument_list> ")"
@@ -460,7 +473,7 @@ public final class Compiler {
         final Token token = tokens.get(index.get());
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
-        else throw new IllegalStateException("illegal end of expression");
+        else throw new IllegalStateException("expected number, but the expression ended (near " + token + ")");
 
         if (token.isNumber()) return new Node(Double.parseDouble(token.getContent()));
         else if (token.isSymbol()) {
@@ -476,6 +489,21 @@ public final class Compiler {
 
                 return new Node(this.context.getConstant(token.getContent()));
             }
+        } else if (token.isOpeningBracket()) {
+            //if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
+            //else throw new IllegalStateException("expected inner expression, but expression ended");
+
+            Node result = this.expression(tokens, index);
+            if (index.get() >= tokens.size())
+                throw new IllegalStateException("expected closing bracket, but expression ended");
+
+            if (!tokens.get(index.get()).isClosingBracket())
+                throw new IllegalStateException("expected closing bracket, but got '"
+                        + tokens.get(index.get()).getContent() + "'");
+
+            if (index.get() < tokens.size()) index.set(index.get() + 1);
+
+            return result;
         } else {
             throw new IllegalStateException("invalid number: "+token.getContent());
         }
@@ -500,14 +528,14 @@ public final class Compiler {
 
         final List<Node> args = this.argumentList(tokens, index);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected closing bracket, but expression ended");
+            throw new IllegalStateException("expected closing bracket after argument list for " + token.getContent()
+                    + ", but expression ended");
 
         if (!tokens.get(index.get()).isClosingBracket())
             throw new IllegalStateException("expected closing bracket, but got: "
                     + tokens.get(index.get()).getContent());
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
-        else throw new IllegalStateException("illegal end of expression");
 
         return new Node(this.context.getFunction(token.getContent()), args);
     }
@@ -518,7 +546,8 @@ public final class Compiler {
 
         final List<Node> arguments = new LinkedList<>();
         arguments.add(this.expression(tokens, index));
-        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+        if (index.get() >= tokens.size()) return arguments;
+        //throw new IllegalStateException("illegal end of expression after argument list");
 
         if (tokens.get(index.get()).isComma()) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
@@ -539,23 +568,8 @@ public final class Compiler {
             else throw new IllegalStateException("expected factor but expression ended");
 
             return new Node(unaryOperator.getOperation(), this.factor(tokens, index));
-        } else if (token.isOpeningBracket()) {
-            if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected inner expression, but expression ended");
-
-            Node result = this.expression(tokens, index);
-            if (index.get() >= tokens.size())
-                throw new IllegalStateException("expected closing bracket, but expression ended");
-
-            if (!tokens.get(index.get()).isClosingBracket()) throw new IllegalStateException("missing closing bracket");
-
-            if (index.get() < tokens.size()) index.set(index.get() + 1);
-            else throw new IllegalStateException("illegal end of expression");
-
-            return result;
-        } else {
+        } else
             return this.power(tokens, index);
-        }
     }
 
     private Node power(List<Token> tokens, MutableInteger index) {
@@ -626,7 +640,6 @@ public final class Compiler {
         final Token token = tokens.get(index.get());
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
-        else throw new IllegalStateException("illegal end of expression");
 
         if (!token.isSymbol()) throw new IllegalStateException("expected symbol, but got: " + token.getContent());
 
@@ -639,7 +652,8 @@ public final class Compiler {
         final List<String> result = new LinkedList<>();
         result.add(this.symbol(tokens, index));
 
-        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("illegal end of expression after symbol list");
 
         if (tokens.get(index.get()).isComma()) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
@@ -655,7 +669,8 @@ public final class Compiler {
             throw new IllegalStateException("expected function definition, but expression ended");
 
         final String name = this.symbol(tokens, index);
-        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("illegal end of expression after function declaration of " + name);
 
         if (!tokens.get(index.get()).isOpeningBracket())
             throw new IllegalStateException("expected opening bracket, but got: "
@@ -665,7 +680,8 @@ public final class Compiler {
         else throw new IllegalStateException("expected symbol list, but expression ended");
 
         final List<String> symbolList = this.symbolList(tokens, index);
-        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("illegal end of expression after argument list of " + name);
 
         if (!tokens.get(index.get()).isClosingBracket())
             throw new IllegalStateException("expected closing bracket, but got: "
@@ -679,7 +695,7 @@ public final class Compiler {
                     + tokens.get(index.get()).getContent());
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
-        else throw new IllegalStateException("illegal end of expression");
+        else throw new IllegalStateException("expected function body of " + name + ", but the expression ended");
 
         List<CompiledToken> compiled;
         if (this.useFallbackParser) {
@@ -693,7 +709,7 @@ public final class Compiler {
 
         CompiledToken[] compiledTokens = compiled.toArray(new CompiledToken[compiled.size()]);
 
-        Function f =  this.arguments.size() == 1 ?
+        Function f =  symbolList.size() == 1 ?
                 new PureFunction(compiledTokens, name) :
                 new ImpureFunction(symbolList.size(), compiledTokens, name);
 
@@ -729,12 +745,16 @@ public final class Compiler {
             throw new IllegalStateException("expected constant definition, but expression ended");
 
         final String name = this.symbol(tokens, index);
-        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected definition of constant " + name + ", but the expression ended"
+                    + " (expected '=')");
 
         if (!tokens.get(index.get()).isEqualsOperator())
             throw new IllegalStateException("expected equals sign, but got: " + tokens.get(index.get()));
         index.set(index.get() + 1);
-        if (index.get() >= tokens.size()) throw new IllegalStateException("illegal end of expression");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected value or expression for constant " + name
+                    + ", but the expression ended");
 
         final double value;
         final Token tmpNext = tokens.get(index.get());
@@ -754,127 +774,85 @@ public final class Compiler {
         final int oldIndex = index.get();
         final String tmpSymbol = this.symbol(tokens, index);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected '=' or an opening bracket, but the expression ended");
+            throw new IllegalStateException("expected '=' or an opening bracket after '" + tmpSymbol
+                    + "', but the expression ended");
 
         final Token tmpNext = tokens.get(index.get());
         index.set(oldIndex);
         if (tmpNext.isEqualsOperator()) this.constantDefinition(tokens, index);
         else if (tmpNext.isOpeningBracket()) this.functionDefinition(tokens, index);
         else throw new IllegalStateException("expected '=' or an opening bracket, but got: " + tmpNext);
+
+        if (index.get() < tokens.size())
+            throw new IllegalStateException("not the whole expression could be parsed (stopped at '"
+                    + tokens.get(index.get()).getContent() + "')");
     }
 
 
     // / recursive descent parser
 
     public static void main(String[] args) {
-        Compiler c = new Compiler(new CompilationContext(true), false);
-        String testExpr = "a + 2*3";
-        List<CompiledToken> testExprRes = c.fallbackExpression(tokenize(testExpr), new MutableInteger(), 0, Collections.singletonList("a"));
-        System.out.println("TEST: " + testExprRes);
-        PureFunction funnn = new PureFunction(testExprRes.toArray(new CompiledToken[testExprRes.size()]), "fun");
-        System.out.println(funnn.of(1));
-        String[] exprs = {
-                "42+(23^2-3*4/(3+2))%222/5*((3+2*2)/1)",
-                "(42+(23^2-3*4/(3+2))%222/((3+2*2)/1))",
-                "(42+(23^2-3*4/(3+2))%222/((3+2*2)/1))/(42+(23^2-3*4/(3+2))%222/((3+2*2)/1))+5",
-                "(42+(23^2-3*4/(3+2))%222/((3+2*2)/1))",
-                "((42+(23^2-3*4/(3+2))%222/((3+2*2)/1))/(42+(23^2-3*4/(3+2))%222/((3+2*2)/1)))+5"
+        Compiler compiler = new Compiler(new CompilationContext(true), false);
+
+        String[] functions = {
+                "2 * sin(5*(x - 42)) + 44454",
+                "x*x*x*x*x*x*x*x*x*x*x*x*x*x/x/x/x/x/x/x/x/x/x+x+x+x+x+x",
+                "x^2^3/x^2",
+                "sqrt(x) + 43895708923.234",
+                "sqrt(x^2 - 42^2)",
+                "sin(x)/cos(4*(x-(2^3)^2)) + x^-24"
         };
-        for (int i = 0; i < exprs.length; ++i) {
-            List<Token> tokenized = Collections.unmodifiableList(tokenize(exprs[i]));
-            List<CompiledToken> result = c.fallbackExpression(tokenized, new MutableInteger(), 0, Collections.emptyList());
-            System.out.println(result);
-            PureFunction f = new PureFunction(result.toArray(new CompiledToken[result.size()]), "sömefünctiön");
-            System.out.println(exprs[i] + "    ==    " + f.of(42.0));
+        PureFunction[] compiledFunctions = new PureFunction[functions.length];
+        final long compileStart = System.nanoTime();
+        for (int i = 0; i < compiledFunctions.length; ++i) {
+            compiler.definition("f" + i + "(x) = " + functions[i]);
+            compiledFunctions[i] = (PureFunction) compiler.context.getFunction("f" + i);
         }
-        String expression = "-1 + 2 * 3 / ( 3 - 4 )\t";
-        List<Token> tokenized = Collections.unmodifiableList(tokenize(expression));
-        List<CompiledToken> result = c.fallbackExpression(tokenized, new MutableInteger(), 0, Collections.emptyList());
-        PureFunction f = new PureFunction(result.toArray(new CompiledToken[result.size()]), "sömefünctiön");
-        System.out.println(f.of(42.0));
-        System.err.println(
-                (42+(Math.pow(23, 2)-3*4/(3+2))%222/((3+2*2)/1))/(42+(Math.pow(23, 2)-3*4/(3+2))%222/((3+2*2)/1))+5
-        );
+        final long compileEnd = System.nanoTime();
+        final long compileTime = compileEnd - compileStart;
+        System.out.println("Compile-Time (in ns): " + compileTime + " [ = ~" + compileTime / 1_000 + "µs = ~"
+                + compileTime / 1_000_000 + "ms ]");
 
-        //time check
-        long ownTime = 0;
-        long otherTime = 0;
-        int runs = 42;
-        long before, after;
-        double resulttt;
-        String expr = "++++++++++++++++++++++++++++++------------------------------------------------------1*sin(2^2^3*sin(sin(cos(tan(42.44442))))/(1+2+3+4+5+6+7+8+9*5*6*9*8/4^2^3^1^1^1^1)------2222)/1/1";
-        List<Token> tokenizedcheck = Collections.unmodifiableList(tokenize(expr));
-        List<CompiledToken> resultcheck = c.fallbackExpression(tokenizedcheck, new MutableInteger(), 0, Collections.emptyList());
-        System.out.println(resultcheck);
-        PureFunction fun = new PureFunction(resultcheck.toArray(new CompiledToken[result.size()]), "sömefünctiön");
-        MathEval m = new MathEval();
-        while( runs --> 0 ) {
-            before = System.nanoTime();
-            resulttt = fun.of(Double.NaN);
-            after = System.nanoTime();
-            ownTime += after - before;
-            System.out.println("MY RESULT: "+resulttt);
-            before = System.nanoTime();
-            resulttt = m.evaluate(expr);
-            after = System.nanoTime();
-            otherTime += after - before;
-            System.out.println("OTHER RESULT: "+resulttt);
+        MathEval me = new MathEval();
+
+        final int NUM_TESTS = 42_000;
+
+        for (int function = 0; function < functions.length; ++function) {
+            System.out.println("Testing function #" + function + "...");
+            System.out.println("f(42) = " + compiledFunctions[function].of(42));
+            double runAverage = 0;
+            double runAverageMathEval = 0;
+            for (int i = NUM_TESTS; i --> 0; --i) {
+                final PureFunction f = compiledFunctions[function];
+                final double arg = (double)i;
+                final long runStart = System.nanoTime();
+                f.of(arg);
+                final long runEnd = System.nanoTime();
+
+                try {
+                    String expr = functions[function].replaceAll("x", Double.toString(arg));
+                    final long evalRunStart = System.nanoTime();
+                    me.evaluate(expr);
+                    final long evalRunEnd = System.nanoTime();
+
+                    double evalRunTime = evalRunEnd - evalRunStart;
+                    runAverageMathEval -= runAverageMathEval / NUM_TESTS;
+                    runAverageMathEval += evalRunTime / NUM_TESTS;
+                } catch (Exception ignored) { }
+
+                // average calculation from: https://stackoverflow.com/questions/12636613/
+                // how-to-calculate-moving-average-without-keeping-the-count-and-data-total
+                double runTime = runEnd - runStart;
+                runAverage -= runAverage / NUM_TESTS;
+                runAverage += runTime / NUM_TESTS;
+            }
+
+            System.out.println("Run-Time (in ns) of function #" + function +  ": " + runAverage + " [ = "
+                    + runAverage / 1_000 + "µs = " + runAverage / 1_000_000 + "ms ]");
+            System.out.println("Run-Time (in ns) of MathEval" + function +  ": " + runAverage + " [ = "
+                    + runAverage / 1_000 + "µs = " + runAverage / 1_000_000 + "ms ]");
+            System.out.println("Custom implementation was " + runAverageMathEval / runAverage + " faster.");
         }
 
-        System.out.println("----------------------------------------------");
-
-        double ownAvg = ownTime / 42.0;
-        double otherAvg = otherTime / 42.0;
-
-        System.out.println("MY AVERAGE: "+ownAvg);
-        System.out.println("OTHER AVERAGE: "+otherAvg);
-
-
-        List<Token> tokens = tokenize("function(x,y) = 4*x^2^(3-1)+33333+sin(y)+sin(1.234)");
-        c.functionDefinition(tokens, new MutableInteger());
-
-        System.out.println(c.constantExpression("((42+(23^2-3*4/(3+2))%222/((3+2*2)/1))/(42+(23^2-3*4/(3+2))%222/((3+2*2)/1)))+5"));
-
-        final String term = "sin(atan2(arg1, arg2*2^3 + arg1 / ( tan(1 + arg2) % 42 )) - "
-                        + "++1++1++1++1++1++1++1++1++1++1++1+++++++---------+++++++++arg3/arg4) /arg5^"
-                        + "(arg1 * log(PI % atan(arg3))^arg2 / 1 / 1 / 1 / 1 / 1 * 2 / (1 + 1 - 1 + 1 - 1 + (1*1*1*1*(2^2^3)))*"
-                        + "sqrt(42) / sqrt(3*arg2^arg3*arg1))";
-        final String theUltimateTestExpression = "leFunction(arg1, arg2, arg3, arg4, arg5) = " + term;
-        System.out.println(theUltimateTestExpression);
-        List<CompiledToken> fallbackResult = c.fallbackExpression(tokenize(term), new MutableInteger(), 0,
-                Arrays.asList("arg1", "arg2", "arg3", "arg4", "arg5"));
-        System.out.println("lefunction(1,2,3,4,5[FALLBACK] = " + new ImpureFunction(5, fallbackResult.toArray(new CompiledToken[fallbackResult.size()]), "ledäschd").of(1, 2, 3, 4, 5));
-
-        c.definition("x = y = z =((42+(23^2-3*4/(3+2))%222/((3+2*2)/1))/(42+(23^2-3*4/(3+2))%222/((3+2*2)/1)))+5;"
-                + theUltimateTestExpression);
-
-        System.err.println("recursively optimized: " + c.context.getFunction("lefunction"));
-
-        System.err.println("lefunction(1,2,3,4,5) = " + c.context.getFunction("lefunction").of(1, 2, 3, 4, 5));
-
-        System.out.println("______________________________________________________________________________");
-
-        c.definition("f(x) = lefunction(1,2,3,4,x)");
-        System.out.println(c.context.getFunction("f"));
-
-        c.definition("test(a,b,c,d) = d - c - b - a");
-        System.out.println(c.context.getFunction("test"));
-        System.out.println(c.constantExpression("test(1,2,3,4)"));
-        System.out.println(c.fallbackExpression(tokenize("test(1,2,3,4)"), new MutableInteger(), 0, Collections.emptyList()));
-        System.out.println(c.fallbackExpression(tokenize("1+2+3+4"), new MutableInteger(), 0, Collections.emptyList()));
-        c.definition("asdf(x) = 1/2/3/4");
-        System.out.println(c.context.getFunction("asdf"));
-
-        System.out.println("-----------------------------------------------------------------------");
-        System.out.println("fallback param order test: " + c.fallbackExpression(tokenize("lefunction(a,b,c,d,e)"), new MutableInteger(), 0, Arrays.asList("a", "b", "c", "d", "e")));
-        c.arguments = Arrays.asList("a", "b", "c", "d", "e");
-        System.out.println("recursive param order test: " + c.expression(tokenize("lefunction(a,b,c,d,e)"), new MutableInteger()));
-        c.arguments = Collections.emptyList();
-        System.out.println("fallback param order test: " + c.fallbackExpression(tokenize("sin(b)/a/c-d-e"), new MutableInteger(), 0, Arrays.asList("a", "b", "c", "d", "e")));
-        c.arguments = Arrays.asList("a", "b", "c", "d", "e");
-        System.out.println("recursive param order test: " + c.expression(tokenize("sin(b)/a/c-d-e"), new MutableInteger()));
-        c.arguments = Collections.emptyList();
-
-        System.out.println("2^3^4 = " + c.fallbackExpression(tokenize("2^3^4"), new MutableInteger(), 0, Collections.emptyList()));
     }
 }

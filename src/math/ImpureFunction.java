@@ -71,4 +71,9 @@ public final class ImpureFunction implements Function {
     public String toString() {
         return this.name + "[" + this.numberOfArguments + "]()" + "[[[" + Arrays.toString(this.postfix); //TODO: REMOVE LATER
     }
+
+    @Override
+    public String getName() {
+        return this.name;
+    }
 }
