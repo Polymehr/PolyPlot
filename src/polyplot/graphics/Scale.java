@@ -37,7 +37,7 @@ public class Scale implements DrawableComponent {
     
     final BigDecimal offset  = BigDecimal.ONE.movePointRight(pow);
     { 
-      final int markers = BigDecimal.valueOf(parent.spanX).divide(offset).setScale(0, RoundingMode.CEILING).intValue();
+      final int markers = BigDecimal.valueOf(parent.getXSpan()).divide(offset).setScale(0, RoundingMode.CEILING).intValue();
       final BigDecimal compare = BigDecimal.valueOf(parent.getXCorner() + parent.getXSpan()).add(offset);
       
       if (true)
@@ -55,7 +55,7 @@ public class Scale implements DrawableComponent {
       
       
     {
-      final int markers = BigDecimal.valueOf(parent.spanX).divide(offset).setScale(0, RoundingMode.CEILING).intValue();
+      final int markers = BigDecimal.valueOf(parent.getXSpan()).divide(offset).setScale(0, RoundingMode.CEILING).intValue();
       final BigDecimal compare = BigDecimal.valueOf(parent.getYCorner() + parent.getYSpan()).add(offset);
         
       int maxLength = 0;
