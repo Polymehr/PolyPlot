@@ -90,6 +90,8 @@ public class FunctionPlotter extends JPanel {
 
     addFunction(FunctionUtil.getFunctionByTerm("sin(x)"));
     addFunction(FunctionUtil.getFunctionByTerm("cos(x)"));
+    addFunction(FunctionUtil.getFunctionByTerm("-sin(x)"));
+    addFunction(FunctionUtil.getFunctionByTerm("-cos(x)"));
 
   }
   
@@ -147,7 +149,7 @@ public class FunctionPlotter extends JPanel {
   public double getValueOfYPixel(int pixel) {
     return (yCorner+(getHeight()-pixel-1)*getValueYPerPixel());
   }
-  
+
   public int getPixelToYValue(double value) {
     if (value == Double.NaN)
       throw new IllegalArgumentException("Value has to be a real number! "+value);
@@ -158,7 +160,7 @@ public class FunctionPlotter extends JPanel {
       throw new IllegalArgumentException("Value has to be a real number! "+value);
     return (int) ((value/getValueXPerPixel()-xCorner/getValueXPerPixel())-1);
   }
-    
+
   public double getYSpan() {
     return spanY;
   }
@@ -317,7 +319,7 @@ public class FunctionPlotter extends JPanel {
     yCorner-=yd;
     xCorner-=xd;
   }
-  
+
   
   public void zoom(Point center, int factor) {
     
@@ -464,28 +466,6 @@ public class FunctionPlotter extends JPanel {
         repaint();
       }
     });
-    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "toggleRounding");
-    action.put("toggleRounding", new AbstractAction() {
-      private static final long serialVersionUID = 1L;
-      @Override
-      public void actionPerformed(ActionEvent e) {
-        if (o.getRoundInfoBox() == 0)
-          o.setRoundInfoBox(Integer.MIN_VALUE);
-        else if (o.getRoundInfoBox() == Integer.MIN_VALUE)
-          o.setRoundInfoBox(0);
-        else
-          o.setRoundInfoBox(-o.getRoundScale());
-        
-        if (o.getRoundScale() == 0)
-          o.setRoundScale(Integer.MIN_VALUE);
-        else if (o.getRoundScale() == Integer.MIN_VALUE)
-          o.setRoundScale(0);
-        else
-          o.setRoundScale(-o.getRoundScale());
-        
-        repaint();
-      }
-    });
     input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.CTRL_DOWN_MASK), "toggleDebug");
     action.put("toggleDebug", new AbstractAction() {
       private static final long serialVersionUID = 1L;
@@ -574,7 +554,15 @@ public class FunctionPlotter extends JPanel {
     action.put("centerYAxis", new AbstractAction() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        move(new Point(getPixelToXValue(0.0), 0), new Point(getWidth()/2, 0));
+        xCorner = -(spanX/2);
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, 0), "centerXAxis");
+    action.put("centerXAxis", new AbstractAction() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        yCorner = -(spanY/2);
         repaint();
       }
     });
@@ -582,42 +570,40 @@ public class FunctionPlotter extends JPanel {
     action.put("centerToOrigin", new AbstractAction() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        move(new Point(getPixelToXValue(0.0), getPixelToYValue(0.0)), new Point(getWidth()/2, getHeight()/2));
+        yCorner = -(spanY/2);
+        xCorner = -(spanX/2);
         repaint();
       }
     });
   }
   
   private void registerMouseListener() {
-    this.addMouseWheelListener(new MouseWheelListener() {
-      @Override
-      public void mouseWheelMoved(MouseWheelEvent e) {
-        
-        if (e.isControlDown())
-          if (e.getWheelRotation()<0)
-            for (int i = 0; i > e.getWheelRotation(); --i)
-              zoom(e.getPoint(), -1);
-          else
-            for (int i = 0; i < e.getWheelRotation(); ++i)
-              zoom(e.getPoint(), 1);
-        
-        else if (e.isShiftDown())
-          if (e.getWheelRotation()<0)
-            for (int i = 0; i > e.getWheelRotation(); --i)
-              move(e.getPoint(), new Point(e.getPoint().x, e.getPoint().y+(int)((e.isAltDown()?1:getHeight()*0.1))));
-          else
-            for (int i = 0; i < e.getWheelRotation(); ++i)
-              move(e.getPoint(), new Point(e.getPoint().x, e.getPoint().y-(int)((e.isAltDown()?1:getHeight()*0.1))));
+    this.addMouseWheelListener(e -> {
+
+      if (e.isControlDown())
+        if (e.getWheelRotation()<0)
+          for (int i = 0; i > e.getWheelRotation(); --i)
+            zoom(e.getPoint(), -1);
         else
-          if (e.getWheelRotation()<0)
-            for (int i = 0; i > e.getWheelRotation(); --i)
-              move(e.getPoint(), new Point(e.getPoint().x-(int)((e.isAltDown()?1:getHeight()*0.1)), e.getPoint().y));
-          else
-            for (int i = 0; i < e.getWheelRotation(); ++i)
-              move(e.getPoint(), new Point(e.getPoint().x+(int)((e.isAltDown()?1:getHeight()*0.1)), e.getPoint().y));
-        
-        repaint();
-      } 
+          for (int i = 0; i < e.getWheelRotation(); ++i)
+            zoom(e.getPoint(), 1);
+
+      else if (e.isShiftDown())
+        if (e.getWheelRotation()<0)
+          for (int i = 0; i > e.getWheelRotation(); --i)
+            move(e.getPoint(), new Point(e.getPoint().x, e.getPoint().y+(int)((e.isAltDown()?1:getHeight()*0.1))));
+        else
+          for (int i = 0; i < e.getWheelRotation(); ++i)
+            move(e.getPoint(), new Point(e.getPoint().x, e.getPoint().y-(int)((e.isAltDown()?1:getHeight()*0.1))));
+      else
+        if (e.getWheelRotation()<0)
+          for (int i = 0; i > e.getWheelRotation(); --i)
+            move(e.getPoint(), new Point(e.getPoint().x-(int)((e.isAltDown()?1:getHeight()*0.1)), e.getPoint().y));
+        else
+          for (int i = 0; i < e.getWheelRotation(); ++i)
+            move(e.getPoint(), new Point(e.getPoint().x+(int)((e.isAltDown()?1:getHeight()*0.1)), e.getPoint().y));
+
+      repaint();
     });
 
 
