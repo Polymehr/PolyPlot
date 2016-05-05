@@ -5,12 +5,14 @@ import java.awt.Graphics;
 import java.awt.Point;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.List;
 
 public class Scale implements DrawableComponent {
   
   private Color color;
+  private static DecimalFormat format = new DecimalFormat("0.###E0");
 
   public Scale(Color color) {
       this.color = color;
@@ -78,7 +80,7 @@ public class Scale implements DrawableComponent {
   private void drawXMarker(BigDecimal value, Point p, int lineLength, FunctionPlotter parent, Graphics gc) {
     if (value != null && value.stripTrailingZeros().equals(BigDecimal.ZERO))
       return;
-    final String text = (value == null ? "" : (value.precision() < 4 ? value.toPlainString() : value.toEngineeringString()));
+    final String text = (value == null ? "" : (value.precision() < 4 ? value.toPlainString() : format.format(value)));
     
     final int height = value == null ? 0 :  gc.getFontMetrics().getHeight();
     final int width  = gc.getFontMetrics().stringWidth(text);
@@ -92,9 +94,9 @@ public class Scale implements DrawableComponent {
   }
   
   private void drawYMarker(BigDecimal value, Point p, int lineLength, int maxWidth, FunctionPlotter parent, Graphics gc) {
-    if (value.stripTrailingZeros().equals(BigDecimal.ZERO))
+    if (value != null && value.stripTrailingZeros().equals(BigDecimal.ZERO))
       return;
-    final String text = (value == null ? "" : (value.precision() < 4 ? value.toPlainString() : value.toEngineeringString()));
+    final String text = (value == null ? "" : (value.precision() < 4 ? value.toPlainString() : format.format(value)));
     
     final int height = value == null ? 0 :  gc.getFontMetrics().getHeight();
     final int width  = gc.getFontMetrics().stringWidth(text);
