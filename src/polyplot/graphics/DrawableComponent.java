@@ -2,20 +2,39 @@ package polyplot.graphics;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.util.Objects;
 
 
-public interface DrawableComponent {
+public abstract class DrawableComponent {
+
+  protected Color foreground;
+  protected Color background;
+
+  public DrawableComponent(Color foreground, Color background) {
+    this.foreground = Objects.requireNonNull(foreground);
+    this.background = Objects.requireNonNull(background);
+  }
+
+  public DrawableComponent(Color foreground) {
+    this(foreground, new Color(0, true));
+  }
   
-  void draw(Graphics gc, FunctionPlotter parent);
+  public abstract void draw(Graphics gc, FunctionPlotter parent);
   
-  void setForegroundColor(Color c);
+  public void setForegroundColor(Color c) {
+    this.foreground = Objects.requireNonNull(c);
+  }
   
-  Color getForegroundColor();
+  public Color getForegroundColor() {
+    return foreground;
+  }
   
-  default void setBackgroundColor(Color c) {}
+  public void setBackgroundColor(Color c) {
+    this.background = Objects.requireNonNull(c);
+  }
   
-  default Color getBackgroundColor() { return new Color(0x00, true);
-    
+  public Color getBackgroundColor() {
+    return background;
   }
 
 }

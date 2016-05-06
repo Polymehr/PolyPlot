@@ -9,13 +9,12 @@ import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.List;
 
-public class Scale implements DrawableComponent {
+public class Scale extends DrawableComponent {
   
-  private Color color;
   private static DecimalFormat format = new DecimalFormat("0.###E0");
 
   public Scale(Color color) {
-      this.color = color;
+    super(color);
   }
 
   @Override
@@ -30,7 +29,7 @@ public class Scale implements DrawableComponent {
     int pow = parent.getPower();
     
     
-    gc.setColor(color);
+    gc.setColor(super.foreground);
     gc.drawLine(0, verticalBar, parent.getWidth(), verticalBar);
     gc.drawLine(horizontalBar, 0, horizontalBar, parent.getHeight());
     
@@ -109,16 +108,4 @@ public class Scale implements DrawableComponent {
       gc.drawString(text, p.x + lineLength + 2, p.y - 3 + height/2);
     
   }
-
-  @Override
-  public void setForegroundColor(Color color) {
-    this.color = color;
-    
-  }
-
-  @Override
-  public Color getForegroundColor() {
-    return this.color;
-  }
-
 }

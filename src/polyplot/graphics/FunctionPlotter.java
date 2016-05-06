@@ -9,8 +9,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
 import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -53,6 +51,11 @@ public class FunctionPlotter extends JPanel {
 
   private double zoomBase;
   private int zoom;
+
+
+  private InfoBox info;
+  private DebugGUI debug;
+  private CheatSheet help;
   
   
   
@@ -77,8 +80,12 @@ public class FunctionPlotter extends JPanel {
     toDraw = new LinkedList<>();
     overlayComponents = new LinkedList<>();
     toDraw.add(new Scale(o.scaleColor));
-    overlayComponents.add(new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, 500));
-    overlayComponents.add(this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0)));
+    info = new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, true, 500);
+    overlayComponents.add(info);
+    help = new CheatSheet(o.scaleColor, new Color(0x60_FFFFFF, true), true);
+    overlayComponents.add(help);
+    debug = this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0), true);
+    overlayComponents.add(debug);
 
     mouse = null;
     
@@ -187,6 +194,15 @@ public class FunctionPlotter extends JPanel {
   
   public int getPower() {
     return pow;
+  }
+
+  /**
+   * @return
+   *    the bounds of the coordinate system. These can change if
+   *    some components are drawn that need a part of the screen space.
+   */
+  public Rectangle getBounds() {
+    return super.getBounds(); //TODO: Update
   }
   
   public List<DrawableFunction> getFuctions() {
@@ -454,7 +470,16 @@ public class FunctionPlotter extends JPanel {
       private static final long serialVersionUID = 1L;
       @Override
       public void actionPerformed(ActionEvent e) {
-        o.infobox = !o.infobox;
+        info.toggleHidden();
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "toggleHelp");
+    action.put("toggleHelp", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        help.toggleHidden();
         repaint();
       }
     });
@@ -466,12 +491,12 @@ public class FunctionPlotter extends JPanel {
         repaint();
       }
     });
-    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.CTRL_DOWN_MASK), "toggleDebug");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "toggleDebug");
     action.put("toggleDebug", new AbstractAction() {
       private static final long serialVersionUID = 1L;
       @Override
       public void actionPerformed(ActionEvent e) {
-        o.debug = !o.debug;
+        debug.toggleHidden();
         repaint();
       }
     });
@@ -664,19 +689,18 @@ public class FunctionPlotter extends JPanel {
     }
   }
   
-  private class DebugGUI implements DrawableComponent {
+  private class DebugGUI extends DrawableComponent implements Hideable {
     
-    private Color foreground;
-    private Color background;
+    private boolean hidden;
     
-    public DebugGUI(Color foreground, Color background) {
-      this.foreground = foreground;
-      this.background = background;
+    public DebugGUI(Color foreground, Color background, boolean hidden) {
+      super(foreground, background);
+      this.hidden = hidden;
     }
 
     @Override
     public void draw(Graphics gc, FunctionPlotter parent) {
-      if (!o.debug)
+      if (hidden)
         return;
       
       String[] info = {
@@ -725,24 +749,18 @@ public class FunctionPlotter extends JPanel {
     }
 
     @Override
-    public void setForegroundColor(Color c) {
-      this.foreground = c;
+    public void setHidden(boolean hidden) {
+      this.hidden = hidden;
     }
 
     @Override
-    public Color getForegroundColor() {
-      return foreground;
+    public boolean isHidden() {
+      return hidden;
     }
-    
+
     @Override
-    public void setBackgroundColor(Color c) {
-      this.background = c;
+    public void toggleHidden() {
+      hidden = !hidden;
     }
-    
-    @Override
-    public Color getBackgroundColor() {
-      return background;
-    }
-    
   }
 }
