@@ -9,27 +9,31 @@ import java.math.RoundingMode;
 import java.util.LinkedList;
 import java.util.List;
 
-public class InfoBox implements DrawableComponent {
+public class InfoBox extends DrawableComponent implements Hideable {
   
-  private Color foreground;
-  private Color background;
+  private boolean hidden;
   
   private boolean docked;
   private boolean showPixel;
   private int functionRadius;
   
-  public InfoBox(final Color foreground, final Color background, 
-                        boolean docked, boolean showPixel, int functionRadius) {
+  public InfoBox(final Color foreground, final Color background,
+                 boolean docked, boolean showPixel, boolean hidden, int functionRadius) {
+    super(foreground, background);
     this.foreground = foreground;
     this.background = background;
     this.docked = docked;
     this.showPixel = showPixel;
     this.functionRadius = functionRadius;
+    this.hidden = hidden;
   }
 
 
   @Override
   public void draw(Graphics gc, FunctionPlotter parent) {
+
+    if (hidden)
+      return;
     
     Point mouse = parent.getMousePos();
     if (mouse == null || mouse.x < 0 || mouse.y < 0)
@@ -63,10 +67,10 @@ public class InfoBox implements DrawableComponent {
     
     Point pos = calculatePos(bounds, parent);
     
-    gc.setColor(background);
+    gc.setColor(super.background);
     gc.fillRect(pos.x, pos.y, bounds.width, bounds.height);
     
-    gc.setColor(foreground);
+    gc.setColor(super.foreground);
     gc.drawRect(pos.x, pos.y, bounds.width, bounds.height);
     
     gc.drawString(xString, pos.x+3, pos.y-1+height);
@@ -74,45 +78,39 @@ public class InfoBox implements DrawableComponent {
     
   }
   
-  private Point calculatePos(Rectangle bounds ,FunctionPlotter parent) {
-    int xPos = 0, yPos = 0; 
-    
+  private Point calculatePos(Rectangle bounds, FunctionPlotter parent) {
+    int xPos = 0, yPos = 0;
+    final Rectangle parentBounds = parent.getBounds();
+
     if (docked) {
       final int xBar = parent.getPixelToXValue(0);
       final int yBar = parent.getPixelToYValue(0);
-      
-      xPos = (xBar > parent.getWidth()-11-bounds.width) ? 5 : parent.getWidth()-6-bounds.width;
-      yPos = (yBar > parent.getHeight()-11-bounds.height) ? 5 : parent.getHeight()-6-bounds.height;
+
+      xPos = (xBar > parentBounds.width-11-bounds.width) ?   parentBounds.x+5 : parentBounds.width-6-bounds.width;
+      yPos = (yBar > parentBounds.height-11-bounds.height) ? parentBounds.y+5 : parentBounds.height-6-bounds.height;
     } else {
       Point mouse = parent.getMousePos();
       
-      xPos = (mouse.x > parent.getWidth()-15-6-bounds.width) ? mouse.x-8-bounds.width : mouse.x+15;
-      yPos = (mouse.y > parent.getHeight()-6-bounds.height) ? parent.getHeight()-6-bounds.height : mouse.y-2;
+      xPos = (mouse.x > parentBounds.width-15-6-bounds.width) ? mouse.x-8-bounds.width : mouse.x+15;
+      yPos = (mouse.y > parentBounds.height-6-bounds.height) ? parentBounds.height-6-bounds.height : mouse.y-2;
       
     }
-    
+
     return new Point(xPos, yPos);
   }
 
   @Override
-  public void setForegroundColor(Color c) {
-    this.foreground = c;
-    
+  public void setHidden(boolean hidden) {
+    this.hidden = hidden;
   }
 
   @Override
-  public Color getForegroundColor() {
-    return foreground;
-  }
-  
-  @Override
-  public void setBackgroundColor(Color c) {
-    this.background = c;
-  }
-  
-  @Override
-  public Color getBackgroundColor() {
-    return background;
+  public boolean isHidden() {
+    return hidden;
   }
 
+  @Override
+  public void toggleHidden() {
+    hidden = !hidden;
+  }
 }
