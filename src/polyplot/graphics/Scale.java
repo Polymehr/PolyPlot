@@ -19,7 +19,9 @@ public class Scale extends DrawableComponent {
 
   @Override
   public void draw(Graphics gc, FunctionPlotter parent) {
-    
+    if (super.hidden)
+      return;
+
     int zeroX = parent.getPixelToXValue(0);
     int zeroY = parent.getPixelToYValue(0);
 

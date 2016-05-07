@@ -4,7 +4,7 @@ import polyplot.graphics.PlotterController;
 
 public class PolyPlot  {
   
-  public static final String VERSION = "0.6.1";
+  public static final String VERSION = "0.7.2";
   
   private static PlotterController main;
   

@@ -1,24 +1,14 @@
 package polyplot.graphics;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
+import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.*;
 import java.util.List;
 
-import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
-import javax.swing.InputMap;
-import javax.swing.JPanel;
-import javax.swing.KeyStroke;
+import javax.swing.*;
 
 import polyplot.PolyPlot;
 import polyplot.functions.ConstantFunction;
@@ -35,6 +25,8 @@ public class FunctionPlotter extends JPanel {
   private HashMap<Function, Color> functions;
   private List<DrawableComponent> toDraw;
   private List<DrawableComponent> overlayComponents;
+
+  private Insets boundOffset;
   
   Options o;
 
@@ -55,22 +47,28 @@ public class FunctionPlotter extends JPanel {
 
   private InfoBox info;
   private DebugGUI debug;
+  private InputField inputField;
   private CheatSheet help;
   
-  
+  private KeyReader reader;
+
   
   public FunctionPlotter(double span) {
     if (span <= 0)
       throw new IllegalArgumentException("Span cannot be negative or zero!");
     this.setLayout(new BorderLayout());
-    
+    super.setFocusable(true);
+    super.requestFocusInWindow();
+
     this.span = spanBase = span;
-    
     
     yCorner = -(span/2);
     xCorner = -(span/2);
 
     o = new Options();
+    reader = this.new KeyReader();
+    this.addKeyListener(reader);
+    boundOffset = new Insets(0, 0, 0, 0);
     
     registerKeyBindings();
     registerMouseListener();
@@ -84,6 +82,8 @@ public class FunctionPlotter extends JPanel {
     overlayComponents.add(info);
     help = new CheatSheet(o.scaleColor, new Color(0x60_FFFFFF, true), true);
     overlayComponents.add(help);
+    inputField = new InputField(o.scaleColor, new Color(0x60_FFFFFF, true), true, this);
+    overlayComponents.add(inputField);
     debug = this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0), true);
     overlayComponents.add(debug);
 
@@ -94,11 +94,6 @@ public class FunctionPlotter extends JPanel {
     
     updateSpans();
     updatePow();
-
-    addFunction(FunctionUtil.getFunctionByTerm("sin(x)"));
-    addFunction(FunctionUtil.getFunctionByTerm("cos(x)"));
-    addFunction(FunctionUtil.getFunctionByTerm("-sin(x)"));
-    addFunction(FunctionUtil.getFunctionByTerm("-cos(x)"));
 
   }
   
@@ -116,9 +111,6 @@ public class FunctionPlotter extends JPanel {
   }
 
   public void addFunction(Function f, Color c) {
-    if (functions.size() >= o.getMaxFunctions())
-      throw new UnsupportedOperationException("No more functions can be added. Function limit ("+o.getMaxFunctions()+") reached!");
-    
     for (Function dup : functions.keySet())
       if (dup.getFunctionTerm().equals(f.getFunctionTerm()))
         return;
@@ -202,7 +194,13 @@ public class FunctionPlotter extends JPanel {
    *    some components are drawn that need a part of the screen space.
    */
   public Rectangle getBounds() {
-    return super.getBounds(); //TODO: Update
+    Rectangle actual = super.getBounds();
+    return new Rectangle(actual.x - boundOffset.left, actual.y - boundOffset.top,
+            actual.width-boundOffset.right, actual.height-boundOffset.bottom);
+  }
+
+  public Insets getBoundOffset() {
+    return boundOffset;
   }
   
   public List<DrawableFunction> getFuctions() {
@@ -392,7 +390,9 @@ public class FunctionPlotter extends JPanel {
   
   
   
-  
+  public void setReceiver(KeyListener k) {
+    this.reader.setReceiver(k);
+  }
   
   
   /**
@@ -480,6 +480,38 @@ public class FunctionPlotter extends JPanel {
       @Override
       public void actionPerformed(ActionEvent e) {
         help.toggleHidden();
+        repaint();
+      }
+    });
+    InputField.Performer addFunction = x -> {
+          ArrayList<String> result = new ArrayList<>();
+          try {
+            addFunction(FunctionUtil.getFunctionByTerm(x.get(0)));
+          } catch (IllegalArgumentException ex) {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            ex.printStackTrace(pw);
+            Scanner s = new Scanner(sw.toString());
+            while (s.hasNextLine())
+              result.add(s.nextLine().replace("\t", "    "));
+          }
+          return result;
+        };
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "addFunction");
+    action.put("addFunction", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        inputField.read("Add function", false, addFunction, FunctionPlotter.this);
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.SHIFT_DOWN_MASK), "addFunctionKeep");
+    action.put("addFunctionKeep", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        inputField.read("Add function", true, addFunction, FunctionPlotter.this);
         repaint();
       }
     });
@@ -601,6 +633,12 @@ public class FunctionPlotter extends JPanel {
       }
     });
   }
+
+  private void enableKeyBindings(final boolean enable) {
+    ActionMap map = this.getActionMap();
+    for (Object o : map.allKeys())
+      map.get(o).setEnabled(enable);
+  }
   
   private void registerMouseListener() {
     this.addMouseWheelListener(e -> {
@@ -688,14 +726,45 @@ public class FunctionPlotter extends JPanel {
       renderTime = System.nanoTime()-renderTime;
     }
   }
+
+  private class KeyReader implements KeyListener {
+
+    private KeyListener receiver = null;
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+      if (receiver != null) {
+        receiver.keyTyped(e);
+        repaint();
+      }
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+      if (receiver != null) {
+        receiver.keyPressed(e);
+        repaint();
+      }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+      if (receiver != null) {
+        receiver.keyReleased(e);
+        repaint();
+      }
+    }
+
+    public void setReceiver(KeyListener receiver) {
+      this.receiver = receiver;
+      FunctionPlotter.this.enableKeyBindings(receiver == null);
+    }
+  }
   
-  private class DebugGUI extends DrawableComponent implements Hideable {
-    
-    private boolean hidden;
+  private class DebugGUI extends DrawableComponent {
     
     public DebugGUI(Color foreground, Color background, boolean hidden) {
-      super(foreground, background);
-      this.hidden = hidden;
+      super(foreground, background, hidden);
     }
 
     @Override
@@ -745,22 +814,6 @@ public class FunctionPlotter extends JPanel {
       }
       
       gc.setFont(f);
-      
-    }
-
-    @Override
-    public void setHidden(boolean hidden) {
-      this.hidden = hidden;
-    }
-
-    @Override
-    public boolean isHidden() {
-      return hidden;
-    }
-
-    @Override
-    public void toggleHidden() {
-      hidden = !hidden;
     }
   }
 }
