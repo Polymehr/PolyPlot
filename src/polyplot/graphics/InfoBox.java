@@ -9,9 +9,7 @@ import java.math.RoundingMode;
 import java.util.LinkedList;
 import java.util.List;
 
-public class InfoBox extends DrawableComponent implements Hideable {
-  
-  private boolean hidden;
+public class InfoBox extends DrawableComponent {
   
   private boolean docked;
   private boolean showPixel;
@@ -19,20 +17,19 @@ public class InfoBox extends DrawableComponent implements Hideable {
   
   public InfoBox(final Color foreground, final Color background,
                  boolean docked, boolean showPixel, boolean hidden, int functionRadius) {
-    super(foreground, background);
+    super(foreground, background, hidden);
     this.foreground = foreground;
     this.background = background;
     this.docked = docked;
     this.showPixel = showPixel;
     this.functionRadius = functionRadius;
-    this.hidden = hidden;
   }
 
 
   @Override
   public void draw(Graphics gc, FunctionPlotter parent) {
 
-    if (hidden)
+    if (super.hidden)
       return;
     
     Point mouse = parent.getMousePos();
