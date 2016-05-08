@@ -8,7 +8,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * Compiles arithmetic expressions, constant and function definitions.
+ *
  * @author Gordian
+ * @see CompilationContext
  */
 public final class Compiler {
     private final static Pattern NUMBER = Pattern.compile("^(?:\\d*\\.\\d+|\\d+\\.?)");
@@ -37,18 +40,46 @@ public final class Compiler {
 
     private List<String> arguments = Collections.emptyList();
 
-    public Compiler(CompilationContext context, boolean useFallbackParser) {
+    /**
+     * Create a new {@code Compiler} that uses a given {@link CompilationContext}.
+     * @param context the {@link CompilationContext}; must not be {@code null}
+     * @see CompilationContext
+     */
+    public Compiler(CompilationContext context) {
         this.context = Objects.requireNonNull(context, "compilation context must not be null");
-        this.useFallbackParser = useFallbackParser;
+        this.useFallbackParser = false; // do not use the fallback parser, as it is not completely functional (yet)
     }
 
+    /**
+     * Evaluates a definition of a constant or function.
+     * E.g.: "x = 42", "x = y = 21", "f(x) = x^2", "f(x,y) = sqrt(x^2 - y^2)", etc.
+     * @param expression the expression to be parsed; must not be {@code null} or empty
+     */
     public void definition(String expression) {
+        if (null == expression || expression.trim().isEmpty())
+            throw new IllegalArgumentException("expression for definition() must not be null or empty");
         String[] definitions = expression.split(DEFINITION_SEPARATOR.pattern());
         for (String s : definitions) this.definition(tokenize(s), new MutableInteger());
     }
 
+    /**
+     * Evaluates a constant expression.
+     * E.g.: "42", "21 - 3 * 4^3", "sin(tan(23))", "customFunction(24 + 23)", etc.
+     * @param expression the expression to be parsed; must not be {@code null} or empty
+     * @return the result of the expression
+     */
     public double constantExpression(String expression) {
+        if (null == expression || expression.trim().isEmpty())
+            throw new IllegalArgumentException("expression for constantExpression() must not be null or empty");
         return this.constantValue(tokenize(expression), new MutableInteger());
+    }
+
+    /**
+     * Returns the {@link CompilationContext} passed to the constructor.
+     * @return a {@link CompilationContext}; never {@code null}
+     */
+    public CompilationContext getContext() {
+        return this.context;
     }
 
     private static List<Token> tokenize(String expression) {
@@ -788,11 +819,14 @@ public final class Compiler {
                     + tokens.get(index.get()).getContent() + "')");
     }
 
-
     // / recursive descent parser
 
+    /**
+     * Tests the performance of the compiler and the runtime performance of the functions and outputs the results.
+     * @param args ignored
+     */
     public static void main(String[] args) {
-        Compiler compiler = new Compiler(new CompilationContext(true), false);
+        Compiler compiler = new Compiler(new CompilationContext(true));
 
         String[] functions = {
                 "2 * sin(5*(x - 42)) + 44454",
@@ -800,14 +834,21 @@ public final class Compiler {
                 "x^2^3/x^2",
                 "sqrt(x) + 43895708923.234",
                 "sqrt(x^2 - 42^2)",
-                "sin(x)/cos(4*(x-(2^3)^2)) + x^-24"
+                "sin(x)/cos(4*(x-(2^3)^2)) + x^-24",
+                "sin(42) + 3 * cos(2 * (x^2 - 4.23)) * e ^ x ^ -1.2 + 5 * x ^ 3 - 3 * x ^ 2 + 4.234 * x - 42234.042348",
+                "sqrt(sin(42) + 3 * cos(2 * (x^2 - 4.23)) * e ^ x ^ -1.2 + 5 * x ^ 3 - 3 * x ^ 2 + 4.234 * x)",
+                "sqrt(sin(x) - 0.5238923740)",
+                "x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x",
+                "x*x-x/x----x*2*x/3*4*x*x*x-x/x----x*2*x/3*4*x*x*x-x/x----x*2*x/3*4*x*x*x-x/x----x*2*x/3*4*x",
         };
+
         PureFunction[] compiledFunctions = new PureFunction[functions.length];
         final long compileStart = System.nanoTime();
         for (int i = 0; i < compiledFunctions.length; ++i) {
             compiler.definition("f" + i + "(x) = " + functions[i]);
             compiledFunctions[i] = (PureFunction) compiler.context.getFunction("f" + i);
         }
+
         final long compileEnd = System.nanoTime();
         final long compileTime = compileEnd - compileStart;
         System.out.println("Compile-Time (in ns): " + compileTime + " [ = ~" + compileTime / 1_000 + "µs = ~"
@@ -817,28 +858,38 @@ public final class Compiler {
 
         final int NUM_TESTS = 42_000;
 
+        double averageAverage = 0;
+
         for (int function = 0; function < functions.length; ++function) {
-            System.out.println("Testing function #" + function + "...");
-            System.out.println("f(42) = " + compiledFunctions[function].of(42));
+            System.out.println("  Testing function #" + function + " (" + functions[function] + ") " + "...");
             double runAverage = 0;
             double runAverageMathEval = 0;
             for (int i = NUM_TESTS; i --> 0; --i) {
                 final PureFunction f = compiledFunctions[function];
                 final double arg = (double)i;
                 final long runStart = System.nanoTime();
-                f.of(arg);
+                f.fastOf(arg);
                 final long runEnd = System.nanoTime();
 
-                try {
-                    String expr = functions[function].replaceAll("x", Double.toString(arg));
-                    final long evalRunStart = System.nanoTime();
-                    me.evaluate(expr);
-                    final long evalRunEnd = System.nanoTime();
+                final double a = f.of(arg), b = f.fastOf(arg);
 
-                    double evalRunTime = evalRunEnd - evalRunStart;
-                    runAverageMathEval -= runAverageMathEval / NUM_TESTS;
-                    runAverageMathEval += evalRunTime / NUM_TESTS;
+                if (!(Math.abs(Math.abs(a) - Math.abs(b)) < 2 * Math.ulp(a))
+                        && !(Double.isInfinite(a) || Double.isInfinite(b) || Double.isNaN(a) || Double.isNaN(b))) {
+                    System.err.println("Result of of() unequal to result of fastOf()");
+                    System.err.println("f.of(" + arg + ")     = " + f.of(arg));
+                    System.err.println("f.fastOf(" + arg + ") = " + f.fastOf(arg));
+                }
+
+                String expr = functions[function].replaceAll("x", Double.toString(arg));
+                final long evalRunStart = System.nanoTime();
+                try {
+                    me.evaluate(expr);
                 } catch (Exception ignored) { }
+                final long evalRunEnd = System.nanoTime();
+
+                double evalRunTime = evalRunEnd - evalRunStart;
+                runAverageMathEval -= runAverageMathEval / NUM_TESTS;
+                runAverageMathEval += evalRunTime / NUM_TESTS;
 
                 // average calculation from: https://stackoverflow.com/questions/12636613/
                 // how-to-calculate-moving-average-without-keeping-the-count-and-data-total
@@ -849,10 +900,15 @@ public final class Compiler {
 
             System.out.println("Run-Time (in ns) of function #" + function +  ": " + runAverage + " [ = "
                     + runAverage / 1_000 + "µs = " + runAverage / 1_000_000 + "ms ]");
-            System.out.println("Run-Time (in ns) of MathEval" + function +  ": " + runAverage + " [ = "
-                    + runAverage / 1_000 + "µs = " + runAverage / 1_000_000 + "ms ]");
-            System.out.println("Custom implementation was " + runAverageMathEval / runAverage + " faster.");
+            System.out.println("Run-Time (in ns) of MathEval #" + function +  ": " + runAverageMathEval + " [ = "
+                    + runAverageMathEval / 1_000 + "µs = " + runAverageMathEval / 1_000_000 + "ms ]");
+            final double timesFaster = runAverageMathEval / runAverage;
+            System.out.println("Custom implementation was " + timesFaster + " times faster.");
+            averageAverage += timesFaster;
         }
+
+        System.out.println("-----------------------------------------------------------------------------------------");
+        System.out.println("Average: " + averageAverage / functions.length);
 
     }
 }

@@ -4,15 +4,17 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
+ * Represents an arithmetic function with an arbitrary number of arguments.
  * @author Gordian
+ * @see Function
  */
-public final class ImpureFunction implements Function {
+final class ImpureFunction implements Function {
     private final int numberOfArguments;
     private final String name;
     private final CompiledToken[] postfix;
     private final DoubleStack stack;
 
-    public final double[] args;
+    final double[] args;
 
     public ImpureFunction(int numberOfArguments, CompiledToken[] postfix, String name) {
         if (numberOfArguments < 1)
@@ -34,7 +36,7 @@ public final class ImpureFunction implements Function {
         return this.ofStoredArgs();
     }
 
-    public double ofStoredArgs() {
+    double ofStoredArgs() {
         for (CompiledToken token : this.postfix) {
             switch (token.type) {
                 case NUMBER: this.stack.push(token.number); break;
@@ -57,7 +59,6 @@ public final class ImpureFunction implements Function {
                 } break;
             }
         }
-        //TODO: maybe remove this check later for better performance
         if (this.stack.size() != 1) throw new IllegalStateException("stack not one at the end of calculation");
         return this.stack.pop();
     }

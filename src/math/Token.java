@@ -3,6 +3,7 @@ package math;
 import java.util.Objects;
 
 /**
+ * Represents a (compile-time) token of an arithmetic expression.
  * @author Gordian
  */
 final class Token {

@@ -6,8 +6,8 @@ import java.util.Arrays;
  * @author Gordian
  */
 final class DoubleStack {
-    private double[] stack;
-    private int top;
+    double[] stack;
+    int top;
 
     public DoubleStack(int initialSize) {
         if (initialSize <= 0) throw new IllegalArgumentException("stack size must not be <= 0");
