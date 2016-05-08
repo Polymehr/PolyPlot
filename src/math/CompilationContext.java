@@ -1,13 +1,13 @@
 package math;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
 /**
+ * Stores the functions and constants produced by a {@link Compiler} and some defaults like "sin()" or "e".
  * @author 5hir0kur0
+ * @see Compiler
  */
 public class CompilationContext {
     private final Map<String, Double> constants;
@@ -89,12 +89,18 @@ public class CompilationContext {
         }
     }
 
+    /**
+     * Creates a new {@code CompilationContext}.
+     * @param addDefaultFunctionsAndConstants if this option is {@code true}, add some default functions like "sin()"
+     *                                        and some default constants like "pi"
+     */
     public CompilationContext(boolean addDefaultFunctionsAndConstants) {
         this.constants = new HashMap<>();
         this.functions = new HashMap<>();
         if (!addDefaultFunctionsAndConstants) return;
         addConstant("e", Math.E);
         addConstant("pi", Math.PI);
+        addConstant("π", Math.PI); // in case someone wants to use the unicode-character
 
         addPureFunction("abs", Math::abs);
         addPureFunction("acos", Math::acos);
@@ -125,8 +131,13 @@ public class CompilationContext {
         addPureFunction("ulp", Math::ulp);
     }
 
+    /**
+     * Adds a new {@link Function} to the context.
+     * @param name the {@link Function}'s name; must not be {@code null} or empty
+     * @param function the {@link Function} to be added; must not be {@code null}
+     */
     public final void addFunction(String name, Function function) {
-        if (Objects.requireNonNull(name, "function name must not be null").isEmpty())
+        if (Objects.requireNonNull(name, "function name must not be null").trim().isEmpty())
             throw new IllegalArgumentException("function name must not be empty");
         if (this.functions.containsKey(name.toLowerCase()))
             throw new IllegalArgumentException("functions cannot be redefined, because the expression compiler works"
@@ -134,16 +145,21 @@ public class CompilationContext {
         this.functions.put(name.toLowerCase(), Objects.requireNonNull(function, "function must not be null"));
     }
 
-    public final void addPureFunction(String name, DoubleUnaryOperator function) {
+    private void addPureFunction(String name, DoubleUnaryOperator function) {
         this.addFunction(name, new PureFunctionAdapter(function, name));
     }
 
-    public final void addBiFunction(String name, DoubleBinaryOperator function) {
+    private void addBiFunction(String name, DoubleBinaryOperator function) {
         this.addFunction(name, new BiFunctionAdapter(name, function));
     }
 
+    /**
+     * Adds a constant ({@code double}) to the context.
+     * @param name the constant's name; must not be {@code null} or empty
+     * @param constant the constant's value; must not be {@code NaN} or positive or negative {@code Infinity}
+     */
     public final void addConstant(String name, Double constant) {
-        if (Objects.requireNonNull(name, "constant name must not be null").isEmpty())
+        if (Objects.requireNonNull(name, "constant name must not be null").trim().isEmpty())
             throw new IllegalArgumentException("constant name must not be empty");
         if (null == constant || Double.isInfinite(constant) || Double.isNaN(constant))
             throw new IllegalArgumentException("constant must not be null, NaN or infinite");
@@ -153,19 +169,56 @@ public class CompilationContext {
         this.constants.put(name.toLowerCase(), constant);
     }
 
+    /**
+     * Returns the {@link Function} with the given name.
+     * @param name the name of the {@link Function} to be returned; must not be {@code null}
+     * @return the {@link Function} if it was found or {@code null} otherwise
+     */
     public Function getFunction(String name) {
         return functions.get(name.toLowerCase());
     }
 
+    /**
+     * Returns the constant with the given name.
+     * @param name the name of the constant to be returned; must not be {@code null}
+     * @return the {@link Double} if it was found or {@code null} otherwise
+     */
     public Double getConstant(String name) {
         return constants.get(name.toLowerCase());
     }
 
+    /**
+     * Checks whether a {@code Function} exists.
+     * @param name the {@code Function}'s name; must not be {@code null}
+     * @return {@code true} if the {@link Function} exists or {@code false} otherwise
+     */
     public boolean hasFunction(String name) {
         return this.functions.containsKey(name.toLowerCase());
     }
 
+    /**
+     * Checks whether a constant exists.
+     * @param name the constant's name; must not be {@code null}
+     * @return {@code true} if the constant exists or {@code false} otherwise
+     */
     public boolean hasConstant(String name) {
         return this.constants.containsKey(name.toLowerCase());
+    }
+
+    /**
+     * Gets all the context's {@link Function}s.
+     * @return a {@link Collection} of {@link Function}s
+     */
+    public Collection<Function> getFunctions() {
+        return this.functions.values();
+    }
+
+    /**
+     * Gets all the context's constants.
+     * @return a {@link Collection} of {@link java.util.Map.Entry}s (the first element is the name and the second the
+     *         value of the constant)
+     */
+    public Set<Map.Entry<String, Double>> getConstants() {
+        return this.constants.entrySet();
     }
 }

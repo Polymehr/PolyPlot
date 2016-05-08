@@ -1,9 +1,10 @@
 package math;
 
 /**
+ * Stores an integer that can be changed.
  * @author 5hir0kur0
  */
-public class MutableInteger {
+class MutableInteger {
     private int i = 0;
 
     public MutableInteger set(int i) {

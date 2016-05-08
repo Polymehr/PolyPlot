@@ -1,10 +1,10 @@
 package math;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.DoubleBinaryOperator;
 
 /**
+ * Represents a binary arithmetic operation, such as e.g. plus or minus.
  * @author 5hir0kur0
  */
 enum BinaryOperation implements ComparableOperator {
@@ -16,31 +16,31 @@ enum BinaryOperation implements ComparableOperator {
     PLUS("+", (left, right) -> left + right, 39, true),
     MINUS("-", (left, right) -> left - right, 39, true);
 
-    private final String SIGN;
-    private final DoubleBinaryOperator OPERATION;
-    private final boolean LEFT_ASSOCIATIVE;
-    private final int WEIGHT;
+    private final String sign;
+    final DoubleBinaryOperator operation; // accessed by fastOf(...) in PureFunction
+    private final boolean leftAssociative;
+    private final int weight;
 
     BinaryOperation(String sign, DoubleBinaryOperator operation, int weight, boolean leftAssociative) {
-        if (Objects.requireNonNull(sign, "operator SIGN must not be null").trim().isEmpty())
-            throw new IllegalArgumentException("operator SIGN must not be empty");
-        this.SIGN = sign;
-        this.OPERATION = Objects.requireNonNull(operation, "operator OPERATION must not be null");
-        this.LEFT_ASSOCIATIVE = leftAssociative;
-        this.WEIGHT = weight;
+        if (Objects.requireNonNull(sign, "operator sign must not be null").trim().isEmpty())
+            throw new IllegalArgumentException("operator sign must not be empty");
+        this.sign = sign;
+        this.operation = Objects.requireNonNull(operation, "operator operation must not be null");
+        this.leftAssociative = leftAssociative;
+        this.weight = weight;
     }
 
     public DoubleBinaryOperator getOperation() {
-        return this.OPERATION;
+        return this.operation;
     }
 
     @Override
     public int getWeight() {
-        return this.WEIGHT;
+        return this.weight;
     }
 
     public String getSign() {
-        return this.SIGN;
+        return this.sign;
     }
 
     /**
@@ -51,7 +51,7 @@ enum BinaryOperation implements ComparableOperator {
      * @return {@code true} if the operator is left associative or {@code false} otherwise
      */
     public boolean isLeftAssociative() {
-        return this.LEFT_ASSOCIATIVE;
+        return this.leftAssociative;
     }
 
     /**
@@ -63,7 +63,7 @@ enum BinaryOperation implements ComparableOperator {
      */
     public static BinaryOperation ofSign(String sign) throws IllegalArgumentException {
         for (BinaryOperation bo : BinaryOperation.values())
-            if (bo.SIGN.equals(sign)) return bo;
+            if (bo.sign.equals(sign)) return bo;
         throw new IllegalArgumentException("\""+sign+"\" is not a valid operator");
     }
 
@@ -73,7 +73,7 @@ enum BinaryOperation implements ComparableOperator {
         if (null == validOperators) {
             validOperators = new String[BinaryOperation.values().length];
             for (int i = 0; i < validOperators.length; ++i) {
-                validOperators[i] = BinaryOperation.values()[i].SIGN;
+                validOperators[i] = BinaryOperation.values()[i].sign;
             }
         }
         return validOperators;
@@ -81,6 +81,6 @@ enum BinaryOperation implements ComparableOperator {
 
     @Override
     public String toString() {
-        return this.SIGN;
+        return this.sign;
     }
 }

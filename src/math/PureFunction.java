@@ -2,11 +2,12 @@ package math;
 
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
 /**
+ * Represents an arithmetic function with exactly one argument.
  * @author 5hir0kur0
+ * @see Function
  */
 public final class PureFunction implements DoubleUnaryOperator, Function {
     private final CompiledToken[] postfix;
@@ -19,6 +20,7 @@ public final class PureFunction implements DoubleUnaryOperator, Function {
         this.postfix = Objects.requireNonNull(postfix, "compiled postfix expression must not be null");
         this.stack = new DoubleStack(postfix.length / 2 == 0 ? 1 : postfix.length / 2);
         this.name = name;
+        this.of(0.0); // needed because the stack needs to be the correct size for fastOf(...) to work
     }
 
     public double of(double x) {
@@ -40,9 +42,57 @@ public final class PureFunction implements DoubleUnaryOperator, Function {
                 } break;
             }
         }
-        //TODO: maybe remove this check later for better performance
         if (this.stack.size() != 1) throw new IllegalStateException("stack not one at the end of calculation");
         return this.stack.pop();
+    }
+
+    /**
+     * This method saves some function calls by directly accessing the stack and using ugly if-statements for operators.
+     * @param x the argument of the function stored by this class
+     * @return the value of the function at x
+     * @see #of(double)
+     */
+    public double fastOf(double x) {
+        for (CompiledToken token : this.postfix) {
+            switch (token.type) {
+                case NUMBER: this.stack.stack[++this.stack.top] = token.number; break;
+                case ARGUMENT: this.stack.stack[++this.stack.top] = x; break;
+                case UNARY_OPERATION:
+                    final double arg = this.stack.stack[this.stack.top--];
+                    if (token.unaryOperator == UnaryOperation.MINUS.operation)
+                        this.stack.stack[++this.stack.top] = -arg;
+                    else if (token.unaryOperator == UnaryOperation.PLUS.operation) break;
+                    else
+                        this.stack.stack[++this.stack.top] = token.unaryOperator.applyAsDouble(arg);
+                break;
+                case BINARY_OPERATION:
+                    final double arg1 = this.stack.stack[this.stack.top--];
+                    final double arg0 = this.stack.stack[this.stack.top--];
+                    if (token.binaryOperator == BinaryOperation.MULTIPLICATION.operation)
+                        this.stack.stack[++this.stack.top] = arg0 * arg1;
+                    else if (token.binaryOperator == BinaryOperation.DIVISION.operation)
+                        this.stack.stack[++this.stack.top] = arg0 / arg1;
+                    else if (token.binaryOperator == BinaryOperation.PLUS.operation)
+                        this.stack.stack[++this.stack.top] = arg0 + arg1;
+                    else if (token.binaryOperator == BinaryOperation.MINUS.operation)
+                        this.stack.stack[++this.stack.top] = arg0 - arg1;
+                    else if (token.binaryOperator == BinaryOperation.EXPONENTIATION.operation)
+                        this.stack.stack[++this.stack.top] = Math.pow(arg0, arg1);
+                    else if (token.binaryOperator == BinaryOperation.MODULUS.operation)
+                        this.stack.stack[++this.stack.top] = arg0 % arg1;
+                    else
+                        this.stack.stack[++this.stack.top] = token.binaryOperator.applyAsDouble(arg0, arg1);
+                break;
+                case FUNCTION:
+                    ImpureFunction f = token.function;
+                    for (int i = 0, stop = f.getNumberOfArguments(); i < stop; ++i)
+                        f.args[i] = this.stack.stack[this.stack.top--];
+                    this.stack.stack[++this.stack.top] = f.ofStoredArgs();
+                break;
+            }
+        }
+        if (this.stack.top != 0) throw new IllegalStateException("stack not one at the end of calculation");
+        return this.stack.stack[this.stack.top--];
     }
 
     @Override
@@ -64,7 +114,7 @@ public final class PureFunction implements DoubleUnaryOperator, Function {
 
     @Override
     public String toString() {
-        return this.name + "[pure]()" + "=" + Arrays.toString(this.postfix); //TODO remove postfix
+        return this.name + "[pure]()";
     }
 
     @Override

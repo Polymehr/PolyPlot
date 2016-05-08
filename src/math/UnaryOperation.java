@@ -1,35 +1,35 @@
 package math;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.DoubleUnaryOperator;
 
 /**
+ * Represents an unary arithmetic operation, such as unary plus or minus.
  * @author 5hir0kur0
  */
 enum UnaryOperation implements ComparableOperator {
     MINUS("-", operand -> -operand, 84),
     PLUS("+", operand -> +operand, 84);
 
-    private final String SIGN;
-    private final DoubleUnaryOperator OPERATION;
-    private final int WEIGHT;
+    private final String sign;
+    final DoubleUnaryOperator operation; // accessed by fastOf(...) in PureFunction
+    private final int weight;
 
     public DoubleUnaryOperator getOperation() {
-        return this.OPERATION;
+        return this.operation;
     }
 
     UnaryOperation(String sign, DoubleUnaryOperator operation, int weight) {
-        if (Objects.requireNonNull(sign, "operator SIGN must not be null").trim().isEmpty())
-            throw new IllegalArgumentException("operator SIGN must not be empty");
-        this.SIGN = sign;
-        this.OPERATION = Objects.requireNonNull(operation, "operator OPERATION must not be null");
-        this.WEIGHT = weight;
+        if (Objects.requireNonNull(sign, "operator sign must not be null").trim().isEmpty())
+            throw new IllegalArgumentException("operator sign must not be empty");
+        this.sign = sign;
+        this.operation = Objects.requireNonNull(operation, "operator operation must not be null");
+        this.weight = weight;
     }
 
     @Override
     public int getWeight() {
-        return this.WEIGHT;
+        return this.weight;
     }
 
     private static String[] validOperators = null;
@@ -38,7 +38,7 @@ enum UnaryOperation implements ComparableOperator {
         if (null == validOperators) {
             validOperators = new String[UnaryOperation.values().length];
             for (int i = 0; i < validOperators.length; ++i) {
-                validOperators[i] = UnaryOperation.values()[i].SIGN;
+                validOperators[i] = UnaryOperation.values()[i].sign;
             }
         }
         return validOperators;
@@ -57,12 +57,12 @@ enum UnaryOperation implements ComparableOperator {
      */
     public static UnaryOperation ofSign(String sign) throws IllegalArgumentException {
         for (UnaryOperation uo : UnaryOperation.values())
-            if (uo.SIGN.equals(sign)) return uo;
+            if (uo.sign.equals(sign)) return uo;
         throw new IllegalArgumentException("\""+sign+"\" is not a valid operator");
     }
 
     @Override
     public String toString() {
-        return "`"+this.SIGN+"`";
+        return "`"+this.sign +"`";
     }
 }

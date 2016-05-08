@@ -1,7 +1,10 @@
 package math;
 
 /**
+ * Interface enabling operators to be compared.
  * @author 5hir0kur0
+ * @see BinaryOperation
+ * @see UnaryOperation
  */
 interface ComparableOperator {
     /**
