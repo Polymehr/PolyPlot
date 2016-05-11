@@ -8,7 +8,7 @@ import java.util.Objects;
  */
 final class Token {
 
-    private enum Type {
+    enum Type {
         NUMBER, SYMBOL, BINARY_OPERATOR, UNARY_OPERATOR, OPENING_BRACKET, CLOSING_BRACKET, EQUALS_OPERATOR, COMMA
     }
 

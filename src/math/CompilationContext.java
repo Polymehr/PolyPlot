@@ -3,6 +3,7 @@ package math;
 import java.util.*;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * Stores the functions and constants produced by a {@link Compiler} and some defaults like "sin()" or "e".
@@ -10,29 +11,76 @@ import java.util.function.DoubleUnaryOperator;
  * @see Compiler
  */
 public class CompilationContext {
-    private final Map<String, Double> constants;
+    private final Map<String, Constant> constants;
     private final Map<String, Function> functions;
 
-    private final static class PureFunctionAdapter implements Function, DoubleUnaryOperator {
+    private boolean functionCacheInvalid = true;
+    private boolean constantCacheInvalid = true;
+
+    private List<Constant> constantCache = null;
+    private List<Function> functionCache = null;
+
+    /**
+     * Used to represent a constant. This class is needed because a constant needs to store whether or not it was
+     * defined by the user.
+     */
+    public final static class Constant {
+        final boolean userDefined;
+        final double value;
+        final String fullExpression;
+        final String name;
+
+        Constant(double value, boolean userDefined, String name, String fullExpression) {
+            if (Objects.requireNonNull(name, "constant name must not be null").trim().isEmpty())
+                throw new IllegalArgumentException("empty constant name");
+            this.value = value;
+            this.userDefined = userDefined;
+            this.fullExpression = fullExpression;
+            this.name = name;
+        }
+
+        /**
+         * @return {@code true} if the constant was defined by the user or {@code false} otherwise
+         */
+        public boolean isUserDefined() {
+            return this.userDefined;
+        }
+
+        /**
+         * @return the constant's value
+         */
+        public double getValue() {
+            return this.value;
+        }
+
+        /**
+         * @return the full expression used to define the constant; might be {@code null}
+         */
+        public String getFullExpression() {
+            return this.fullExpression;
+        }
+
+        /**
+         * @return the constant's name; never {@code null}
+         */
+        public String getName() {
+            return this.name;
+        }
+    }
+
+    private final static class PureFunctionAdapter extends Function implements DoubleUnaryOperator {
 
         private final DoubleUnaryOperator operation;
-        private final String name;
 
         PureFunctionAdapter(DoubleUnaryOperator operation, String name) {
+            super(name, "[native function]", 1, null, false);
             this.operation = Objects.requireNonNull(operation, "pure function adapter operation must not be null");
-            this.name = Objects.requireNonNull(name, "function name must not be null");
-            if (this.name.trim().isEmpty()) throw new IllegalArgumentException("function name must not be empty");
         }
 
         @Override
         public double of(double... args) {
             if (args.length != 1) throw new IllegalArgumentException("pure functions take exactly one argument");
             return this.operation.applyAsDouble(args[0]);
-        }
-
-        @Override
-        public int getNumberOfArguments() {
-            return 1;
         }
 
         @Override
@@ -45,21 +93,15 @@ public class CompilationContext {
             return this.operation.applyAsDouble(operand);
         }
 
-        @Override
-        public String getName() {
-            return this.name;
-        }
     }
 
-    private final static class BiFunctionAdapter implements DoubleBinaryOperator, Function {
+    private final static class BiFunctionAdapter extends Function implements DoubleBinaryOperator {
 
         private final DoubleBinaryOperator operation;
-        private final String name;
 
         BiFunctionAdapter(String name, DoubleBinaryOperator operation) {
+            super(name, "[native function]", 2, null, false);
             this.operation = Objects.requireNonNull(operation, "binary function operation must not be null");
-            this.name = Objects.requireNonNull(name, "function name must not be null");
-            if (this.name.trim().isEmpty()) throw new IllegalArgumentException("function name must not be empty");
         }
 
         @Override
@@ -74,18 +116,8 @@ public class CompilationContext {
         }
 
         @Override
-        public int getNumberOfArguments() {
-            return 2;
-        }
-
-        @Override
         public String toString() {
             return this.name + "[bi]()";
-        }
-
-        @Override
-        public String getName() {
-            return this.name;
         }
     }
 
@@ -98,9 +130,9 @@ public class CompilationContext {
         this.constants = new HashMap<>();
         this.functions = new HashMap<>();
         if (!addDefaultFunctionsAndConstants) return;
-        addConstant("e", Math.E);
-        addConstant("pi", Math.PI);
-        addConstant("π", Math.PI); // in case someone wants to use the unicode-character
+        addConstant("e", null, Math.E, false);
+        addConstant("pi", null, Math.PI, false);
+        addConstant("π", null, Math.PI, false); // in case someone wants to use the unicode-character
 
         addPureFunction("abs", Math::abs);
         addPureFunction("acos", Math::acos);
@@ -136,13 +168,14 @@ public class CompilationContext {
      * @param name the {@link Function}'s name; must not be {@code null} or empty
      * @param function the {@link Function} to be added; must not be {@code null}
      */
-    public final void addFunction(String name, Function function) {
+    public final void addFunction(String name, Function function) throws IllegalArgumentException {
         if (Objects.requireNonNull(name, "function name must not be null").trim().isEmpty())
             throw new IllegalArgumentException("function name must not be empty");
         if (this.functions.containsKey(name.toLowerCase()))
             throw new IllegalArgumentException("functions cannot be redefined, because the expression compiler works"
                     + " under the assumption that they are constant");
         this.functions.put(name.toLowerCase(), Objects.requireNonNull(function, "function must not be null"));
+        this.functionCacheInvalid = true;
     }
 
     private void addPureFunction(String name, DoubleUnaryOperator function) {
@@ -156,9 +189,13 @@ public class CompilationContext {
     /**
      * Adds a constant ({@code double}) to the context.
      * @param name the constant's name; must not be {@code null} or empty
+     * @param fullExpression the full expression used to define this constant (e.g. {@code "c = 23*PI"});
+     *                       may be {@code null}; if it is {@code null} the value of the constant won't be reevaluated
+     *                       on recompile
      * @param constant the constant's value; must not be {@code NaN} or positive or negative {@code Infinity}
+     * @param userDefined {@code true} if the constant was defined by the user or {@code false} if it is predefined
      */
-    public final void addConstant(String name, Double constant) {
+    public final void addConstant(String name, String fullExpression, Double constant, boolean userDefined) throws IllegalArgumentException {
         if (Objects.requireNonNull(name, "constant name must not be null").trim().isEmpty())
             throw new IllegalArgumentException("constant name must not be empty");
         if (null == constant || Double.isInfinite(constant) || Double.isNaN(constant))
@@ -166,7 +203,8 @@ public class CompilationContext {
         if (this.constants.containsKey(name.toLowerCase()))
             throw new IllegalArgumentException("constants cannot be redefined, because the expression compiler works "
                     + "under the assumption that they are constant");
-        this.constants.put(name.toLowerCase(), constant);
+        this.constants.put(name.toLowerCase(), new Constant(constant, userDefined, name, fullExpression));
+        this.constantCacheInvalid = true;
     }
 
     /**
@@ -184,7 +222,9 @@ public class CompilationContext {
      * @return the {@link Double} if it was found or {@code null} otherwise
      */
     public Double getConstant(String name) {
-        return constants.get(name.toLowerCase());
+        Constant tmp =  constants.get(name.toLowerCase());
+        if (null == tmp) return null;
+        return tmp.value;
     }
 
     /**
@@ -207,18 +247,57 @@ public class CompilationContext {
 
     /**
      * Gets all the context's {@link Function}s.
+     * @param onlyUserDefined if {@code true}, only return user-defined functions
      * @return a {@link Collection} of {@link Function}s
      */
-    public Collection<Function> getFunctions() {
-        return this.functions.values();
+    public List<Function> getFunctions(boolean onlyUserDefined) {
+        if (onlyUserDefined && !this.functionCacheInvalid && this.functionCache != null) return this.functionCache;
+        List<Function> result = this.functions.values().stream()
+                .filter(f -> !onlyUserDefined || f.isUserDefined())
+                .collect(Collectors.toList());
+        if (onlyUserDefined) {
+            this.functionCache = result;
+            this.functionCacheInvalid = false;
+        }
+        return result;
     }
 
     /**
      * Gets all the context's constants.
-     * @return a {@link Collection} of {@link java.util.Map.Entry}s (the first element is the name and the second the
-     *         value of the constant)
+     * @param onlyUserDefined if {@code true}, only return user-defined constants
+     * @return a {@link List} of {@link math.CompilationContext.Constant}s
      */
-    public Set<Map.Entry<String, Double>> getConstants() {
-        return this.constants.entrySet();
+    public List<Constant> getConstants(boolean onlyUserDefined) {
+        if (onlyUserDefined && !this.constantCacheInvalid && this.constantCache != null) return this.constantCache;
+        List<Constant> result =  this.constants.values().stream()
+                .filter(constant -> !onlyUserDefined || constant.userDefined)
+                .collect(Collectors.toList());
+        if (onlyUserDefined) {
+            this.constantCache = result;
+            this.constantCacheInvalid = false;
+        }
+        return result;
+    }
+
+    /**
+     * NOTE: This method should only be used by the {@link Compiler} class, as calling it requires recompiling all user
+     *       defined functions. Some functions might not be able to properly execute if they are not recompiled after
+     *       this method was invoked.
+     * @param name the function's name
+     */
+    void removeFunctionIfPresent(String name) {
+        this.functions.remove(name.toLowerCase());
+        this.functionCacheInvalid = true;
+    }
+
+    /**
+     * NOTE: This method should only be used by the {@link Compiler} class, as calling it requires recompiling all user
+     *       defined functions. Some functions might not be able to properly execute if they are not recompiled after
+     *       this method was invoked.
+     * @param name the constant's name
+     */
+    void removeConstantIfPresent(String name) {
+        this.constants.remove(name.toLowerCase());
+        this.constantCacheInvalid = true;
     }
 }
