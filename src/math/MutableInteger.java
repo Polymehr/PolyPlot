@@ -4,7 +4,7 @@ package math;
  * Stores an integer that can be changed.
  * @author Gordian
  */
-class MutableInteger {
+final class MutableInteger {
     private int i = 0;
 
     public MutableInteger set(int i) {

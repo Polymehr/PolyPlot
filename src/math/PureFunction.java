@@ -9,17 +9,10 @@ import java.util.function.DoubleUnaryOperator;
  * @author Gordian
  * @see Function
  */
-public final class PureFunction implements DoubleUnaryOperator, Function {
-    private final CompiledToken[] postfix;
-    private final DoubleStack stack;
-    private final String name;
+final class PureFunction extends Function implements DoubleUnaryOperator {
 
-    public PureFunction(CompiledToken[] postfix, String name) {
-        if (Objects.requireNonNull(name, "function name must not be null").trim().isEmpty())
-            throw new IllegalArgumentException("function name must not be empty");
-        this.postfix = Objects.requireNonNull(postfix, "compiled postfix expression must not be null");
-        this.stack = new DoubleStack(postfix.length / 2 == 0 ? 1 : postfix.length / 2);
-        this.name = name;
+    PureFunction(String name, String fullExpression, CompiledToken[] postfix) {
+        super(name, fullExpression, 1, Objects.requireNonNull(postfix, "compiled postfix expression must not be null"));
         this.of(0.0); // needed because the stack needs to be the correct size for fastOf(...) to work
     }
 

@@ -699,6 +699,7 @@ public final class Compiler {
         if (index.get() >= tokens.size())
             throw new IllegalStateException("expected function definition, but expression ended");
 
+        final int startIndex = index.get();
         final String name = this.symbol(tokens, index);
         if (index.get() >= tokens.size())
             throw new IllegalStateException("illegal end of expression after function declaration of " + name);
@@ -738,13 +739,20 @@ public final class Compiler {
             compiled = expression.compile();
         }
 
+        final int endIndex = index.get();
+
         CompiledToken[] compiledTokens = compiled.toArray(new CompiledToken[compiled.size()]);
 
+        final String fullExpression = formatExpression(tokens.subList(startIndex, endIndex).listIterator());
         Function f =  symbolList.size() == 1 ?
-                new PureFunction(compiledTokens, name) :
-                new ImpureFunction(symbolList.size(), compiledTokens, name);
+                new PureFunction(name, fullExpression, compiledTokens) :
+                new ImpureFunction(name, fullExpression, symbolList.size(), compiledTokens);
 
-        this.context.addFunction(name, f);
+        if (this.context.hasFunction(name)) {
+            this.context.removeFunctionIfPresent(name);
+            this.context.addFunction(name, f);
+            recompileUserDefined();
+        } else this.context.addFunction(name, f);
 
         return f;
     }
@@ -776,6 +784,7 @@ public final class Compiler {
             throw new IllegalStateException("expected constant definition, but expression ended");
 
         final String name = this.symbol(tokens, index);
+        final int startIndex = index.get();
         if (index.get() >= tokens.size())
             throw new IllegalStateException("expected definition of constant " + name + ", but the expression ended"
                     + " (expected '=')");
@@ -792,8 +801,15 @@ public final class Compiler {
         if (tmpNext.isSymbol() && !this.context.hasConstant(tmpNext.getContent()))
             value = this.constantDefinition(tokens, index);
         else value = constantValue(tokens, index);
+        final int endIndex = index.get();
 
-        this.context.addConstant(name, value);
+        if (this.context.hasConstant(name)) {
+            this.context.removeConstantIfPresent(name);
+            this.context.addConstant(name, formatExpression(tokens.subList(startIndex, endIndex).listIterator()),
+                    value, true);
+            recompileUserDefined();
+        } else this.context.addConstant(name, formatExpression(tokens.subList(startIndex, endIndex).listIterator()),
+                value, true);
 
         return value;
     }
@@ -820,6 +836,42 @@ public final class Compiler {
     }
 
     // / recursive descent parser
+
+    private static String formatExpression(ListIterator<Token> tokens) {
+        StringBuilder result = new StringBuilder(42);
+        tokens.forEachRemaining(token -> {
+            switch (token.getType()) {
+                case NUMBER:
+                case SYMBOL:
+                case OPENING_BRACKET:
+                case CLOSING_BRACKET:
+                    result.append(token.getContent());
+                    break;
+                case BINARY_OPERATOR:
+                case EQUALS_OPERATOR:
+                case COMMA:
+                    result.append(" ").append(token.getContent()).append(" ");
+                    break;
+                case UNARY_OPERATOR:
+                    result.append(" ").append(token.getContent());
+                    break;
+                default: throw new IllegalStateException("illegal token type: " + token.getType());
+            }
+        });
+        return result.toString();
+    }
+
+    private void recompileUserDefined() {
+        for (CompilationContext.Constant constant : this.context.getConstants(true)) {
+            this.context.removeConstantIfPresent(constant.getName());
+            if (constant.getFullExpression() != null)
+                this.definition(constant.getFullExpression());
+        }
+        for (Function f : this.context.getFunctions(true)) {
+            this.context.removeFunctionIfPresent(f.getName());
+            this.definition(f.getFullExpression());
+        }
+    }
 
     /**
      * Tests the performance of the compiler and the runtime performance of the functions and outputs the results.
