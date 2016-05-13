@@ -5,13 +5,19 @@ import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import javax.swing.*;
 
 import polyplot.PolyPlot;
-import polyplot.functions.ConstantFunction;
 import polyplot.functions.Function;
 import polyplot.functions.FunctionUtil;
 import polyplot.functions.properties.Poles;
@@ -22,7 +28,7 @@ public class FunctionPlotter extends JPanel {
 
   private long renderTime;
   
-  private HashMap<Function, Color> functions;
+  private final HashMap<Function, Color> functions;
   private List<DrawableComponent> toDraw;
   private List<DrawableComponent> overlayComponents;
 
@@ -33,7 +39,7 @@ public class FunctionPlotter extends JPanel {
 
   private double xCorner;
   private double yCorner;
-  
+
   private final double spanBase;
   private double span, spanX, spanY;
   
@@ -45,12 +51,11 @@ public class FunctionPlotter extends JPanel {
   private int zoom;
 
 
-  private InfoBox info;
-  private DebugGUI debug;
-  private InputField inputField;
-  private CheatSheet help;
-  
-  private KeyReader reader;
+  private final JPanel overlay;
+  private final InfoBox info;
+  private final DebugGUI debug;
+  private final InputField inputField;
+  private final CheatSheet help;
 
   
   public FunctionPlotter(double span) {
@@ -60,14 +65,22 @@ public class FunctionPlotter extends JPanel {
     super.setFocusable(true);
     super.requestFocusInWindow();
 
+
+    overlay = new JPanel(new BorderLayout()) {
+      @Override
+      protected void paintComponent(Graphics gc) {
+        for (DrawableComponent dc : overlayComponents)
+          dc.draw(gc, FunctionPlotter.this);
+      }
+    };
+    overlay.setBackground(new Color(0x00, true));
+    overlay.setOpaque(false);
+
     this.span = spanBase = span;
-    
     yCorner = -(span/2);
     xCorner = -(span/2);
 
     o = new Options();
-    reader = this.new KeyReader();
-    this.addKeyListener(reader);
     boundOffset = new Insets(0, 0, 0, 0);
     
     registerKeyBindings();
@@ -80,12 +93,17 @@ public class FunctionPlotter extends JPanel {
     toDraw.add(new Scale(o.scaleColor));
     info = new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, true, 500);
     overlayComponents.add(info);
-    help = new CheatSheet(o.scaleColor, new Color(0x60_FFFFFF, true), true);
+    help = new CheatSheet(o.scaleColor, new Color(0xB8_EFFFFF, true), true);
     overlayComponents.add(help);
-    inputField = new InputField(o.scaleColor, new Color(0x60_FFFFFF, true), true, this);
+    inputField = new InputField(o.scaleColor, new Color(0x7F_FFFFFF, true), true, this);
     overlayComponents.add(inputField);
     debug = this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0), true);
     overlayComponents.add(debug);
+
+
+    //jlp.add(this, 0);
+    //jlp.add(overlay, 1);
+    this.add(overlay, BorderLayout.CENTER);
 
     mouse = null;
     
@@ -94,7 +112,6 @@ public class FunctionPlotter extends JPanel {
     
     updateSpans();
     updatePow();
-
   }
   
   
@@ -202,6 +219,10 @@ public class FunctionPlotter extends JPanel {
   public Insets getBoundOffset() {
     return boundOffset;
   }
+
+  JPanel getOverlay() {
+    return overlay;
+  }
   
   public List<DrawableFunction> getFuctions() {
     return new LinkedList<>();
@@ -212,7 +233,7 @@ public class FunctionPlotter extends JPanel {
 
 
 
-
+  private int paintCount = 0;
   @Override
   public void paintComponent(Graphics g) {
     updateSpans();
@@ -226,14 +247,14 @@ public class FunctionPlotter extends JPanel {
     for (DrawableComponent dc : toDraw) {
       dc.draw(g, this);
     }
-
-    paintOverlay(g, false);
-
   }
 
   private void paintOverlay(Graphics gc, boolean useCache) {
-    for (DrawableComponent dc : overlayComponents) {
-      dc.draw(gc, this);
+    if (useCache) {
+      //TODO Draw Cache
+      overlay.repaint();
+    } else {
+      repaint();
     }
 
   }
@@ -247,13 +268,7 @@ public class FunctionPlotter extends JPanel {
   private void drawFunctions(Graphics g) {
     for (Function f : functions.keySet()) {
       g.setColor(functions.get(f));
-      if (f instanceof ConstantFunction) {
-        
-        int y = getPixelToYValue(f.calculate(0));
-        
-        g.drawLine(-1, y, getWidth(), y);
-        
-      } else if (o.poleRecognition && f instanceof Poles) {
+      if (o.poleRecognition && f instanceof Poles) {
         Poles p = (Poles) f;
         
         FunctionUtil.setLowerBound(getValueOfXPixel(0));
@@ -387,14 +402,6 @@ public class FunctionPlotter extends JPanel {
       }
   }
 
-  
-  
-  
-  public void setReceiver(KeyListener k) {
-    this.reader.setReceiver(k);
-  }
-  
-  
   /**
    * Registers following key bindings:<br>
    * <ul>
@@ -465,7 +472,7 @@ public class FunctionPlotter extends JPanel {
       }
     });
 
-    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_I, 0), "toggleInfo");
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), "toggleInfo");
     action.put("toggleInfo", new AbstractAction() {
       private static final long serialVersionUID = 1L;
       @Override
@@ -483,26 +490,19 @@ public class FunctionPlotter extends JPanel {
         repaint();
       }
     });
-    InputField.Performer addFunction = x -> {
-          ArrayList<String> result = new ArrayList<>();
+    Consumer<String> addFunction = x -> {
           try {
-            addFunction(FunctionUtil.getFunctionByTerm(x.get(0)));
+            addFunction(FunctionUtil.getFunctionByTerm(x));
           } catch (IllegalArgumentException ex) {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            ex.printStackTrace(pw);
-            Scanner s = new Scanner(sw.toString());
-            while (s.hasNextLine())
-              result.add(s.nextLine().replace("\t", "    "));
+            inputField.outputException(ex);
           }
-          return result;
         };
     input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "addFunction");
     action.put("addFunction", new AbstractAction() {
       private static final long serialVersionUID = 1L;
       @Override
       public void actionPerformed(ActionEvent e) {
-        inputField.read("Add function", false, addFunction, FunctionPlotter.this);
+        inputField.read("Add function", false, true, addFunction, FunctionPlotter.this);
         repaint();
       }
     });
@@ -511,7 +511,7 @@ public class FunctionPlotter extends JPanel {
       private static final long serialVersionUID = 1L;
       @Override
       public void actionPerformed(ActionEvent e) {
-        inputField.read("Add function", true, addFunction, FunctionPlotter.this);
+        inputField.read("Add function", true, true, addFunction, FunctionPlotter.this);
         repaint();
       }
     });
@@ -529,6 +529,47 @@ public class FunctionPlotter extends JPanel {
       @Override
       public void actionPerformed(ActionEvent e) {
         debug.toggleHidden();
+        repaint();
+      }
+    });
+    input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.CTRL_DOWN_MASK), "debugConsole");
+    action.put("debugConsole", new AbstractAction() {
+      private static final long serialVersionUID = 1L;
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        ScriptEngineManager sem = new ScriptEngineManager();
+        ScriptEngine js = sem.getEngineByName("JavaScript");
+        StringWriter sw = new StringWriter();
+        js.getContext().setWriter(sw);
+        js.put("fp", FunctionPlotter.this);
+
+        try {
+          js.eval("function hack(obj, field) {" +
+                    "var field = obj.getClass().getDeclaredField(field);" +
+                    "field.setAccessible(true);" +
+                    "return field;" +
+                  "}");
+        } catch (ScriptException e1) {
+          e1.printStackTrace();
+        }
+        final int[] outputLineCount = {0};
+        inputField.read("Console", true, false, x -> {
+          try {
+            Object o = js.eval(x);
+            inputField.outputOutput("<< " + Objects.toString(o, "undefined"));
+            try (Scanner s = new Scanner(sw.toString())) {
+              for (int l = 0; s.hasNextLine(); ++l) {
+                if (l >= outputLineCount[0]) {
+                  ++outputLineCount[0];
+                  inputField.outputLine(s.nextLine());
+                } else
+                  s.nextLine();
+              }
+            }
+          } catch (ScriptException se) {
+            inputField.outputException(se);
+          }
+        }, FunctionPlotter.this);
         repaint();
       }
     });
@@ -634,7 +675,7 @@ public class FunctionPlotter extends JPanel {
     });
   }
 
-  private void enableKeyBindings(final boolean enable) {
+  void enableKeyBindings(final boolean enable) {
     ActionMap map = this.getActionMap();
     for (Object o : map.allKeys())
       map.get(o).setEnabled(enable);
@@ -727,40 +768,6 @@ public class FunctionPlotter extends JPanel {
     }
   }
 
-  private class KeyReader implements KeyListener {
-
-    private KeyListener receiver = null;
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-      if (receiver != null) {
-        receiver.keyTyped(e);
-        repaint();
-      }
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-      if (receiver != null) {
-        receiver.keyPressed(e);
-        repaint();
-      }
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-      if (receiver != null) {
-        receiver.keyReleased(e);
-        repaint();
-      }
-    }
-
-    public void setReceiver(KeyListener receiver) {
-      this.receiver = receiver;
-      FunctionPlotter.this.enableKeyBindings(receiver == null);
-    }
-  }
-  
   private class DebugGUI extends DrawableComponent {
     
     public DebugGUI(Color foreground, Color background, boolean hidden) {

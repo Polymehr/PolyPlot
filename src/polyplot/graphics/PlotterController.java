@@ -4,7 +4,7 @@ package polyplot.graphics;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-import javax.swing.JFrame;
+import javax.swing.*;
 
 public class PlotterController extends JFrame {
 
@@ -20,7 +20,7 @@ public class PlotterController extends JFrame {
 
     this.add(plotter = new FunctionPlotter(20));
 
-    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
     this.setLocationRelativeTo(null);
 

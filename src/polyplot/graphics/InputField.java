@@ -1,153 +1,227 @@
 package polyplot.graphics;
 
+import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.TitledBorder;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * @author Jannik
  */
 public class InputField extends DrawableComponent {
 
-    private String prompt;
-    private StringBuilder input;
-    private Font font;
-    private Performer toPerform;
+    private TitledBorder title;
+    private Consumer<String> toPerform;
     private FunctionPlotter client;
-    private List<String> output;
+
+    private final TransparentTextArea inputField;
+    private final TransparentTextPane outputField;
 
     private boolean working;
+    private boolean hideOutput;
     private boolean keepField;
+    private boolean clearOutput;
+
+    private static final Font FONT = new Font(Font.MONOSPACED, Font.PLAIN, 11);
+    private final AttributeSet DEFAULT;
+    private final AttributeSet OUTPUT;
+    private final AttributeSet ERROR;
 
 
     public InputField(Color foreground, Color background, boolean hidden, FunctionPlotter parent) {
         super(foreground, background, hidden);
         working = false;
-        input = new StringBuilder();
-        output = new LinkedList<>();
+        hideOutput = true;
+
+
+        inputField = new TransparentTextArea();
+        outputField = new TransparentTextPane();
+
+        inputField .setVisible(false);
+        inputField.setBackground(super.background);
+        outputField.setBackground(super.background);
+        outputField.setVisible(false);
+        inputField.setEditable(true);
+        inputField.setFont(FONT);
+        outputField.setFont(FONT);
+        outputField.setContentType("text/plain");
+        outputField.setEditable(false);
+
+        JPanel tmpPanel = new JPanel(new BorderLayout());
+        inputField.setOpaque(false);
+        outputField.setOpaque(false);
+        tmpPanel.setOpaque(false);
+        tmpPanel.add(inputField, BorderLayout.SOUTH);
+        tmpPanel.add(outputField, BorderLayout.NORTH);
+
+        parent.getOverlay().add(tmpPanel, BorderLayout.SOUTH);
+
+        DEFAULT = new SimpleAttributeSet();
+        StyleConstants.setForeground((MutableAttributeSet) DEFAULT, foreground);
+        StyleConstants.setBackground((MutableAttributeSet) DEFAULT, background);
+        StyleConstants.setFontFamily((MutableAttributeSet) DEFAULT, Font.MONOSPACED);
+        StyleConstants.setFontSize((MutableAttributeSet) DEFAULT, 11);
+        OUTPUT = new SimpleAttributeSet(DEFAULT);
+        StyleConstants.setForeground((MutableAttributeSet) OUTPUT, new Color(0x4F4F4F));
+        ERROR = new SimpleAttributeSet(DEFAULT);
+        StyleConstants.setForeground((MutableAttributeSet) ERROR, new Color(0x990000));
+
+        Border tmpBorder = BorderFactory.createMatteBorder(1,0,0,0, foreground);
+
+        title = BorderFactory.createTitledBorder(tmpBorder);
+
+        title.setTitleFont(FONT);
+        title.setTitleColor(new Color(foreground.getRGB()+0x202020));
+        title.setTitleJustification(TitledBorder.LEFT);
+
+        inputField.setBorder(title);
+        inputField.updateBorderOffset();
+        outputField.setBorder(tmpBorder);
+        inputField.addKeyListener(new Receiver());
+
+    }
+
+    @Override
+    public void setHidden(boolean hidden) {
+        inputField.setVisible(!hidden);
+        outputField.setVisible(!hidden && !hideOutput);
+        super.setHidden(hidden);
+    }
+
+    @Override
+    public void toggleHidden() {
+        super.toggleHidden();
+        inputField.setVisible(!hidden);
+        outputField.setVisible(!hidden && !hideOutput);
     }
 
     @Override
     public void draw(Graphics gc, FunctionPlotter parent) {
+        if (working && !inputField.hasFocus() && !outputField.hasFocus())
+            inputField.requestFocusInWindow();
+        inputField.setVisible(!hidden);
+        outputField.setVisible(!hidden && !hideOutput);
+
         if (super.hidden) {
             parent.getBoundOffset().bottom = 0;
-            return;
+        } else {
+            parent.getBoundOffset().bottom = inputField.getHeight();
+            outputField.setMaximumSize(new Dimension(parent.getWidth(), parent.getHeight()/2));
         }
-
-        final int margin = 6;
-        final int fontHeight = gc.getFontMetrics().getHeight(), upperY = parent.getHeight()-margin-fontHeight;
-        parent.getBoundOffset().bottom = margin+fontHeight;
-        Font origin = gc.getFont();
-        font = new Font(Font.MONOSPACED, Font.PLAIN, origin.getSize());
-
-        // Draw Box
-        gc.setColor(super.background);
-        gc.fillRect(0, upperY, parent.getWidth(), upperY);
-        gc.setColor(super.foreground);
-        gc.drawLine(0, parent.getHeight()-margin-fontHeight, parent.getWidth(), parent.getHeight()-margin-fontHeight);
-
-
-        int promptWidth = gc.getFontMetrics().stringWidth(prompt) + margin;
-
-        gc.setFont(font.deriveFont(UNDERLINED));
-
-        // Draw prompt
-        gc.drawString(prompt, margin/2, parent.getHeight()-margin);
-        gc.setFont(font);
-        gc.drawString(":", promptWidth, parent.getHeight()-margin);
-        promptWidth+= margin*2;
-
-        // Draw input
-        gc.drawString(input.toString(), promptWidth, parent.getHeight()-margin);
-
-        // Draw "caret"
-        final int xCaret = gc.getFontMetrics().stringWidth(input.toString()) + promptWidth + 2;
-        gc.drawLine(xCaret, parent.getHeight()-margin, xCaret, parent.getHeight()-fontHeight-2);
-
-        // Draw output
-        if (output != null && output.size() > 0)
-            drawOutput(margin, upperY, gc, parent);
-
-        gc.setFont(origin);
-
     }
 
-    private void drawOutput(int margin, int upperY, Graphics gc, FunctionPlotter parent) {
-        final int fontHeight = gc.getFontMetrics().getHeight();
-        int boxHeight = output.size()*fontHeight+margin;
-        int yPos = upperY-boxHeight-margin;
-
-        // Draw box
-        gc.setColor(background);
-        gc.fillRect(0, yPos, parent.getWidth(), boxHeight+margin);
-        gc.setColor(foreground);
-        gc.drawLine(0, yPos, parent.getWidth(), yPos);
-
-        yPos += margin/2;
-        for (String s : output)
-            gc.drawString(s, margin/2, yPos+=fontHeight);
-
-
-    }
-
-    public void read(String prompt, boolean keepField, Performer p, FunctionPlotter parent) {
+    public void read(String prompt, boolean keepField, boolean clearOutput, Consumer<String> toPerform, FunctionPlotter parent) {
         if (working)
             return;
 
-        this.prompt = prompt;
-        this.input.setLength(0);
+        this.title.setTitle(prompt);
 
-        parent.setReceiver(this.new Receiver());
         this.client = parent;
-        this.toPerform = Objects.requireNonNull(p);
+        parent.enableKeyBindings(false);
+        this.toPerform = Objects.requireNonNull(toPerform);
         this.working  = true;
         super.hidden = false;
+        this.hideOutput = true;
         this.keepField = keepField;
+        this.clearOutput = clearOutput;
     }
 
-    public void append(char c) {
-        input.append(c);
+    public void outputLine(String output) {
+        try {
+            postString(output, DEFAULT);
+        } catch (BadLocationException e) {
+            outputException(e);
+        }
     }
 
-    public void remove() {
-        if (input.length() > 0)
-            input.setLength(input.length()-1);
+    public void outputOutput(String output) {
+        try {
+            postString(output, OUTPUT);
+        } catch (BadLocationException e) {
+            outputException(e);
+        }
     }
 
-    public void clear() {
-        input.setLength(0);
+    public void outputError(String output) {
+        try {
+            postString(output, ERROR);
+        } catch (BadLocationException e) {
+            outputException(e);
+        }
+    }
+
+    public void outputException(Throwable t) {
+        try {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            t.printStackTrace(pw);
+
+            String result = sw.toString().replaceAll("\t", "    ");
+
+            postString(result, ERROR);
+
+        } catch (Throwable throwable) {
+            throwable.addSuppressed(t);
+            throwable.printStackTrace();
+        }
+    }
+
+    private void postString(String output, AttributeSet style)
+            throws BadLocationException {
+        if (outputField.getText().trim().isEmpty()) {
+            outputField.setText("");
+            outputField.getDocument().insertString(outputField.getDocument().getLength(),
+                    output.trim(), style);
+        } else
+            outputField.getDocument().insertString(outputField.getDocument().getLength(),
+                    "\n" + output.trim(), style);
+
+    }
+
+    public void clearOutput() {
+        outputField.setText("");
     }
 
     public void approve() {
-        List<String> output = toPerform.perform(getArguments(input));
-        if (output.size() == 0 && !keepField)
+        if (clearOutput)
+            outputField.setText("");
+        toPerform.accept(inputField.getText());
+        hideOutput = outputField.getText().trim().isEmpty();
+        inputField.updateBorderOffset();
+        if (hideOutput && !keepField)
             cancel();
         else {
-            this.input.setLength(0);
-            this.output = output;
+            this.inputField.setText("");
         }
     }
 
     public void cancel() {
-        this.input.setLength(0);
-        this.prompt = "";
+        inputField.setText("");
+        inputField.setVisible(false);
+        outputField.setText("");
+        outputField.setVisible(false);
+        this.title.setTitle("");
         this.working = false;
         super.hidden = true;
         this.toPerform = null;
-        this.output.clear();
-        this.font = null; // Dirty & Fast fix of "first char"
-        client.setReceiver(null);
+        client.enableKeyBindings(true);
     }
 
-    private List<String> getArguments(CharSequence input) {
+    public static List<String> getArguments(CharSequence input) {
         LinkedList<String> result = new LinkedList<>();
         StringBuilder argument = new StringBuilder();
 
         boolean doubleQuoted = false, simpleQuoted = false;
-        int lastCp = 0;
+        int lastCp = 0x20;
         for (int cp : input.chars().toArray()) {
             if (lastCp == '\\')
                 argument.appendCodePoint(cp);
@@ -180,53 +254,81 @@ public class InputField extends DrawableComponent {
         return result;
     }
 
-    @FunctionalInterface
-    /**
-     * Determines what happens to the input of a input field.
-     */
-    public interface Performer {
-        /**
-         * Performs the input of the {@link InputField}.
-         *
-         * @param arguments
-         *      the argument that have been extracted from the input.
-         *      The input is split at every whitespace.
-         * @return
-         *      the output after the performing is done.
-         */
-        List<String> perform(List<String> arguments);
-    }
-
     private class Receiver extends KeyAdapter {
-
-        private boolean wasCaptured = false;
-
-        @Override
-        public void keyTyped(KeyEvent e) {
-            final char ch = e.getKeyChar();
-            if (!wasCaptured && font != null && font.canDisplay(ch))
-                append(e.getKeyChar());
-        }
 
         @Override
         public void keyPressed(KeyEvent e) {
-            wasCaptured = true;
             switch (e.getKeyCode()) {
-                case KeyEvent.VK_BACK_SPACE:
-                    remove();
-                    break;
-                case KeyEvent.VK_DELETE:
-                    clear();
-                    break;
                 case KeyEvent.VK_ENTER:
-                    approve();
+                    if (e.getModifiers() == 0) {
+                        approve();
+                    } else {
+                        inputField.append("\n");
+                        inputField.repaint();
+                    }
+                    e.consume();
                     break;
                 case KeyEvent.VK_ESCAPE:
                     cancel();
+                    e.consume();
                     break;
-                default:
-                    wasCaptured = false;
             }
+        }
+    }
+
+    private class TransparentTextArea extends JTextArea {
+
+        private Color background;
+
+        private int borderOffset;
+
+        public TransparentTextArea() {
+            super.setBackground(Color.BLACK);
+            this.background = new Color(0x00, true);
+        }
+
+        @Override
+        public void setBackground(Color background) {
+            this.background = background;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            updateBorderOffset();
+            g.setColor(background);
+            g.fillRect(0, borderOffset, super.getWidth(), super.getHeight());
+            super.paintComponent(g);
+        }
+
+        final private void updateBorderOffset() {
+            if (hideOutput) {
+                borderOffset = this.getBorder().getBorderInsets(this).top/2;
+            }
+            else
+                borderOffset = 0;
+        }
+    }
+
+    private class TransparentTextPane extends JTextPane {
+
+        private Color background;
+
+        public TransparentTextPane() {
+            super();
+            super.setBackground(Color.BLACK);
+            this.background = new Color(0x00, true);
+        }
+
+        @Override
+        public void setBackground(Color background) {
+            this.background = background;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            g.setColor(background);
+            g.fillRect(0, 0, super.getWidth(), super.getHeight());
+            super.paintComponent(g);
         }
     }
 }
