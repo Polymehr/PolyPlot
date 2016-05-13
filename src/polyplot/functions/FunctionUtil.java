@@ -133,30 +133,6 @@ public  class FunctionUtil {
     if (functionTerm == null || functionTerm.isEmpty())
       throw new IllegalArgumentException("'functionTerm' cannot be empty or null!");
     
-    try {
-      return new ConstantFunction(functionTerm);
-    } catch (IllegalArgumentException e) {}
-    
-    try {
-      return new LinearFunction(functionTerm);
-    } catch (IllegalArgumentException e) {}
-    try {
-      return new ParabolaFunction(functionTerm);
-    } catch (IllegalArgumentException e) {}
-    
-    
-    try {
-      return new SineFunction(functionTerm);
-    } catch (IllegalArgumentException e) {}
-    try {
-      return new CosineFunction(functionTerm);
-    } catch (IllegalArgumentException e) {}
-    try {
-      return new TangentFunction(functionTerm);
-    } catch (IllegalArgumentException e) {}
-    
-    
-    
     return new CommonFunction(functionTerm);
   }
   

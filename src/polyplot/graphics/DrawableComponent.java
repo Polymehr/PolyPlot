@@ -1,5 +1,6 @@
 package polyplot.graphics;
 
+import javax.swing.text.BadLocationException;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.font.TextAttribute;

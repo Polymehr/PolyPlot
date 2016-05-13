@@ -53,7 +53,7 @@ public class CheatSheet extends DrawableComponent {
         final String[] view = {
             "View:",
                 "F1", "Toggle the Cheat Sheet",
-                "i", "Toggle the info box",
+                "b", "Toggle the info box",
         };
 
         final String[][] data = {movement, zoom, control, view};
