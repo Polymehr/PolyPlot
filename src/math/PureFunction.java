@@ -1,6 +1,5 @@
 package math;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.DoubleUnaryOperator;
 
