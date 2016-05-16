@@ -8,7 +8,7 @@ import java.util.function.DoubleUnaryOperator;
  * @author 5hir0kur0
  * @see Function
  */
-final class PureFunction extends Function implements DoubleUnaryOperator {
+public final class PureFunction extends Function implements DoubleUnaryOperator {
 
     PureFunction(String name, String fullExpression, CompiledToken[] postfix) {
         super(name, fullExpression, 1, Objects.requireNonNull(postfix, "compiled postfix expression must not be null"));

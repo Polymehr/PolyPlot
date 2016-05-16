@@ -1,7 +1,5 @@
 package math;
 
-import polyplot.MathEval;
-
 import java.util.*;
 import java.util.function.*;
 import java.util.regex.Matcher;
@@ -871,96 +869,5 @@ public final class Compiler {
             this.context.removeFunctionIfPresent(f.getName());
             this.definition(f.getFullExpression());
         }
-    }
-
-    /**
-     * Tests the performance of the compiler and the runtime performance of the functions and outputs the results.
-     * @param args ignored
-     */
-    public static void main(String[] args) {
-        Compiler compiler = new Compiler(new CompilationContext(true));
-
-        String[] functions = {
-                "2 * sin(5*(x - 42)) + 44454",
-                "x*x*x*x*x*x*x*x*x*x*x*x*x*x/x/x/x/x/x/x/x/x/x+x+x+x+x+x",
-                "x^2^3/x^2",
-                "sqrt(x) + 43895708923.234",
-                "sqrt(x^2 - 42^2)",
-                "sin(x)/cos(4*(x-(2^3)^2)) + x^-24",
-                "sin(42) + 3 * cos(2 * (x^2 - 4.23)) * e ^ x ^ -1.2 + 5 * x ^ 3 - 3 * x ^ 2 + 4.234 * x - 42234.042348",
-                "sqrt(sin(42) + 3 * cos(2 * (x^2 - 4.23)) * e ^ x ^ -1.2 + 5 * x ^ 3 - 3 * x ^ 2 + 4.234 * x)",
-                "sqrt(sin(x) - 0.5238923740)",
-                "x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x-x+x",
-                "x*x-x/x----x*2*x/3*4*x*x*x-x/x----x*2*x/3*4*x*x*x-x/x----x*2*x/3*4*x*x*x-x/x----x*2*x/3*4*x",
-        };
-
-        PureFunction[] compiledFunctions = new PureFunction[functions.length];
-        final long compileStart = System.nanoTime();
-        for (int i = 0; i < compiledFunctions.length; ++i) {
-            compiler.definition("f" + i + "(x) = " + functions[i]);
-            compiledFunctions[i] = (PureFunction) compiler.context.getFunction("f" + i);
-        }
-
-        final long compileEnd = System.nanoTime();
-        final long compileTime = compileEnd - compileStart;
-        System.out.println("Compile-Time (in ns): " + compileTime + " [ = ~" + compileTime / 1_000 + "µs = ~"
-                + compileTime / 1_000_000 + "ms ]");
-
-        MathEval me = new MathEval();
-
-        final int NUM_TESTS = 42_000;
-
-        double averageAverage = 0;
-
-        for (int function = 0; function < functions.length; ++function) {
-            System.out.println("  Testing function #" + function + " (" + functions[function] + ") " + "...");
-            double runAverage = 0;
-            double runAverageMathEval = 0;
-            for (int i = NUM_TESTS; i --> 0; --i) {
-                final PureFunction f = compiledFunctions[function];
-                final double arg = (double)i;
-                final long runStart = System.nanoTime();
-                f.fastOf(arg);
-                final long runEnd = System.nanoTime();
-
-                final double a = f.of(arg), b = f.fastOf(arg);
-
-                if (!(Math.abs(Math.abs(a) - Math.abs(b)) < 2 * Math.ulp(a))
-                        && !(Double.isInfinite(a) || Double.isInfinite(b) || Double.isNaN(a) || Double.isNaN(b))) {
-                    System.err.println("Result of of() unequal to result of fastOf()");
-                    System.err.println("f.of(" + arg + ")     = " + f.of(arg));
-                    System.err.println("f.fastOf(" + arg + ") = " + f.fastOf(arg));
-                }
-
-                String expr = functions[function].replaceAll("x", Double.toString(arg));
-                final long evalRunStart = System.nanoTime();
-                try {
-                    me.evaluate(expr);
-                } catch (Exception ignored) { }
-                final long evalRunEnd = System.nanoTime();
-
-                double evalRunTime = evalRunEnd - evalRunStart;
-                runAverageMathEval -= runAverageMathEval / NUM_TESTS;
-                runAverageMathEval += evalRunTime / NUM_TESTS;
-
-                // average calculation from: https://stackoverflow.com/questions/12636613/
-                // how-to-calculate-moving-average-without-keeping-the-count-and-data-total
-                double runTime = runEnd - runStart;
-                runAverage -= runAverage / NUM_TESTS;
-                runAverage += runTime / NUM_TESTS;
-            }
-
-            System.out.println("Run-Time (in ns) of function #" + function +  ": " + runAverage + " [ = "
-                    + runAverage / 1_000 + "µs = " + runAverage / 1_000_000 + "ms ]");
-            System.out.println("Run-Time (in ns) of MathEval #" + function +  ": " + runAverageMathEval + " [ = "
-                    + runAverageMathEval / 1_000 + "µs = " + runAverageMathEval / 1_000_000 + "ms ]");
-            final double timesFaster = runAverageMathEval / runAverage;
-            System.out.println("Custom implementation was " + timesFaster + " times faster.");
-            averageAverage += timesFaster;
-        }
-
-        System.out.println("-----------------------------------------------------------------------------------------");
-        System.out.println("Average: " + averageAverage / functions.length);
-
     }
 }

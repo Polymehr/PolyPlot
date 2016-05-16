@@ -1,9 +1,8 @@
 package polyplot.graphics;
 
+import math.*;
+import math.Compiler;
 import polyplot.PolyPlot;
-import polyplot.functions.Function;
-import polyplot.functions.FunctionUtil;
-import polyplot.functions.properties.Poles;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -17,13 +16,12 @@ import java.util.*;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class FunctionPlotter extends JPanel {
+public class FunctionPlotter extends JPanel implements Observer {
 
     private static final long serialVersionUID = 1L;
 
     private long renderTime;
 
-    private final HashMap<Function, Color> functions;
     private List<DrawableComponent> toDraw;
     private List<DrawableComponent> overlayComponents;
 
@@ -52,6 +50,9 @@ public class FunctionPlotter extends JPanel {
     private final InputField inputField;
     private final CheatSheet help;
 
+    private final Compiler compiler;
+    private List<DrawableFunction> functions;
+    private final Map<String, Color> functionColors;
 
     public FunctionPlotter(double span) {
         if (span <= 0)
@@ -81,8 +82,6 @@ public class FunctionPlotter extends JPanel {
         registerKeyBindings();
         registerMouseListener();
 
-        functions = new HashMap<>();
-
         toDraw = new LinkedList<>();
         overlayComponents = new LinkedList<>();
         toDraw.add(new Scale(o.scaleColor));
@@ -105,36 +104,14 @@ public class FunctionPlotter extends JPanel {
         zoom = 0;
         zoomBase = 1.05;
 
+        compiler = new Compiler(new CompilationContext(true));
+        functions = new ArrayList<>(10);
+        compiler.getContext().addObserver(this);
+        functionColors = new HashMap<>();
+
         updateSpans();
         updatePow();
     }
-
-
-    public void addFunction(Function f) {
-        addFunction(f, o.graphColor);
-
-        o.graphColor = new Color(o.functionColors[functions.size() % o.functionColors.length]);
-
-    }
-
-    public void addFunction(Function f, Color c) {
-        for (Function dup : functions.keySet())
-            if (dup.getFunctionTerm().equals(f.getFunctionTerm()))
-                return;
-
-        functions.put(f, c);
-    }
-
-    public void removeFunction(String functionTerm) {
-        for (Function key : functions.keySet())
-            if (key.getFunctionTerm().equals(functionTerm)) {
-                functions.remove(key);
-                return;
-            }
-
-        throw new IllegalArgumentException("Function with function term '" + functionTerm + "' not found.");
-    }
-
 
     public double getValueXPerPixel() {
         return spanX / getWidth();
@@ -210,26 +187,28 @@ public class FunctionPlotter extends JPanel {
         return overlay;
     }
 
-    public List<DrawableFunction> getFuctions() {
-        return new LinkedList<>();
-    }
-
-
     private int paintCount = 0;
 
     @Override
     public void paintComponent(Graphics g) {
+        final Graphics2D g2d = (Graphics2D)g;
+        g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         updateSpans();
 //    xCorner+=5;
 //    yCorner+=5;
         g.setColor(o.backgroundColor);
         g.fillRect(0, 0, getWidth(), getHeight());
 
-        drawFunctions(g);
-
         for (DrawableComponent dc : toDraw) {
             dc.draw(g, this);
         }
+
+        drawFunctions(g);
     }
 
     private void paintOverlay(Graphics gc, boolean useCache) {
@@ -249,69 +228,7 @@ public class FunctionPlotter extends JPanel {
      * @param g
      */
     private void drawFunctions(Graphics g) {
-        for (Function f : functions.keySet()) {
-            g.setColor(functions.get(f));
-            if (o.poleRecognition && f instanceof Poles) {
-                Poles p = (Poles) f;
-
-                FunctionUtil.setLowerBound(getValueOfXPixel(0));
-                FunctionUtil.setUpperBound(getValueOfXPixel(getWidth() - 1));
-
-                p.calculatePoles();
-
-
-                for (int i = -1; i < getWidth(); ++i) {
-
-                    double xLst = getValueOfXPixel(i - 1); // TODO: Better implementation
-                    double x0 = getValueOfXPixel(i);
-                    double x1 = getValueOfXPixel(i + 1);
-                    double xNxt = getValueOfXPixel(i + 2);
-
-                    double yLst = f.calculate(xLst);
-                    double y0 = f.calculate(x0);
-                    double y1 = f.calculate(x1);
-                    double yNxt = f.calculate(xNxt);
-
-
-                    final double NaN = Double.NaN,
-                            NEG_INF = Double.NEGATIVE_INFINITY, POS_INF = Double.POSITIVE_INFINITY;
-
-
-                    if (y0 != NaN && y1 != NaN)
-                        if (p.isPole(x1, xNxt)) {
-                            g.drawLine(
-                                    i, getPixelToYValue(y0),
-                                    i + 1, getPixelToYValue(y0 < yLst ? NEG_INF : POS_INF));
-                        } else if (p.isPole(xLst, x0))
-                            g.drawLine(
-                                    i, getPixelToYValue(y1 < yNxt ? NEG_INF : POS_INF),
-                                    i + 1, getPixelToYValue(y1));
-                        else if (!p.isPole(x0, x1))
-                            g.drawLine(
-                                    i, getPixelToYValue(y0),
-                                    i + 1, getPixelToYValue(y1));
-                }
-
-            } else {
-
-                for (int i = -1; i < getWidth(); ++i) {
-
-                    double x0 = getValueOfXPixel(i);
-                    double x1 = getValueOfXPixel(i + 1);
-
-                    double y0 = f.calculate(x0);
-                    double y1 = f.calculate(x1);
-
-
-                    if (!Double.isNaN(y0) && !Double.isNaN(y1))
-                        g.drawLine(
-                                i, getPixelToYValue(y0),
-                                i + 1, getPixelToYValue(y1));
-                }
-
-            }
-
-        }
+        for (DrawableFunction f : functions) f.draw(g, this);
     }
 
 
@@ -479,10 +396,10 @@ public class FunctionPlotter extends JPanel {
                 repaint();
             }
         });
-        Consumer<String> addFunction = x -> {
+        Consumer<String> addFunction = s -> {
             try {
-                addFunction(FunctionUtil.getFunctionByTerm(x));
-            } catch (IllegalArgumentException ex) {
+                compiler.definition(s);
+            } catch (IllegalArgumentException|IllegalStateException ex) {
                 inputField.outputException(ex);
             }
         };
@@ -492,7 +409,7 @@ public class FunctionPlotter extends JPanel {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                inputField.read("Add function", false, true, addFunction, FunctionPlotter.this);
+                inputField.read("Add function or constant", false, true, addFunction, FunctionPlotter.this);
                 repaint();
             }
         });
@@ -502,7 +419,7 @@ public class FunctionPlotter extends JPanel {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                inputField.read("Add function", true, true, addFunction, FunctionPlotter.this);
+                inputField.read("Add function or constant", true, true, addFunction, FunctionPlotter.this);
                 repaint();
             }
         });
@@ -767,6 +684,21 @@ public class FunctionPlotter extends JPanel {
             super.repaint();
             renderTime = System.nanoTime() - renderTime;
         }
+    }
+
+    @Override
+    public void update(Observable o, Object arg) {
+        functions.clear();
+        compiler.getContext().getFunctions(true).forEach(f -> {
+            if (f instanceof PureFunction) {
+                final Color tmp;
+                if (functionColors.containsKey(f.getName())) tmp = functionColors.get(f.getName());
+                else tmp = new Color(this.o.functionColors[functions.size() % this.o.functionColors.length]);
+                functionColors.put(f.getName(), tmp);
+                functions.add(new DrawableFunction(tmp, (PureFunction) f));
+            }
+        });
+        repaint();
     }
 
     private class DebugGUI extends DrawableComponent {
