@@ -7,10 +7,14 @@ import java.util.stream.Collectors;
 
 /**
  * Stores the functions and constants produced by a {@link Compiler} and some defaults like "sin()" or "e".
+ * NOTE: The observers will be notified whenever a function or constant is added. You can just check with
+ *       {@code instanceof} whether it was a {@link Function} or {@link math.CompilationContext.Constant}.
+ *       Observers are not notified when a function/constant is removed, because removing only occurs while
+ *       recompiling (and thus the respective (updated) item will be added again later again anyway)
  * @author 5hir0kur0
  * @see Compiler
  */
-public class CompilationContext {
+public class CompilationContext extends Observable {
     private final Map<String, Constant> constants;
     private final Map<String, Function> functions;
 
@@ -176,6 +180,10 @@ public class CompilationContext {
                     + " under the assumption that they are constant");
         this.functions.put(name.toLowerCase(), Objects.requireNonNull(function, "function must not be null"));
         this.functionCacheInvalid = true;
+        if (function.isUserDefined()) {
+            super.setChanged();
+            super.notifyObservers(function);
+        }
     }
 
     private void addPureFunction(String name, DoubleUnaryOperator function) {
@@ -203,8 +211,13 @@ public class CompilationContext {
         if (this.constants.containsKey(name.toLowerCase()))
             throw new IllegalArgumentException("constants cannot be redefined, because the expression compiler works "
                     + "under the assumption that they are constant");
-        this.constants.put(name.toLowerCase(), new Constant(constant, userDefined, name, fullExpression));
+        Constant tmp = new Constant(constant, userDefined, name, fullExpression);
+        this.constants.put(name.toLowerCase(), tmp);
         this.constantCacheInvalid = true;
+        if (userDefined) {
+            super.setChanged();
+            super.notifyObservers(tmp);
+        }
     }
 
     /**
@@ -286,8 +299,12 @@ public class CompilationContext {
      * @param name the function's name
      */
     void removeFunctionIfPresent(String name) {
-        this.functions.remove(name.toLowerCase());
+        Function tmp = this.functions.remove(name.toLowerCase());
+        if (!tmp.isUserDefined()) throw new IllegalStateException("trying to remove non-user-defined function");
         this.functionCacheInvalid = true;
+        // no need to notify observers, because this method is only called if the compiler is doing a recompile
+        // (and thus all the functions will be added again later again (possibly with a different implementation))
+        // which will notify the observers
     }
 
     /**
@@ -299,5 +316,8 @@ public class CompilationContext {
     void removeConstantIfPresent(String name) {
         this.constants.remove(name.toLowerCase());
         this.constantCacheInvalid = true;
+        // no need to notify observers, because this method is only called if the compiler is doing a recompile
+        // (and thus all the constants will be added again later again (possibly with a different value))
+        // which will notify the observers
     }
 }
