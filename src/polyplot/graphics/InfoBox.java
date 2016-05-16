@@ -52,6 +52,19 @@ public class InfoBox extends DrawableComponent {
     
     components.add(xString);
     components.add(yString);
+    switch (functionRadius) {
+      case  0:
+        break;
+      case -1:
+        for (DrawableFunction f : parent.getFunctions())
+          components.add(getFunctionString(f, mouse.x, parent));
+        break;
+      default:
+        for (DrawableFunction f : parent.getFunctions())
+          if (f.intersectsWith(mouse, functionRadius, parent))
+            components.add(getFunctionString(f, mouse.x, parent));
+    }
+
     
     for (String s : components) {
       int wid = gc.getFontMetrics().stringWidth(s);
@@ -72,7 +85,30 @@ public class InfoBox extends DrawableComponent {
     
     gc.drawString(xString, pos.x+3, pos.y-1+height);
     gc.drawString(yString, pos.x+3, pos.y-1+height*2);
-    
+
+
+    switch (functionRadius) {
+      case  0:
+        break;
+      case -1:
+      {
+        int yPos = pos.y - 1 + height * 2;
+        for (DrawableFunction f : parent.getFunctions()) {
+          gc.setColor(f.getForegroundColor());
+          gc.drawString(getFunctionString(f, mouse.x, parent), pos.x+3, yPos+=height);
+        }
+      }
+      break;
+
+      default:
+        int yPos = pos.y - 1 + height * 2;
+        for (DrawableFunction f : parent.getFunctions())
+          if (f.intersectsWith(mouse, functionRadius, parent)) {
+            gc.setColor(f.getForegroundColor());
+            gc.drawString(getFunctionString(f, mouse.x, parent), pos.x+3, yPos+=height);
+          }
+    }
+
   }
   
   private Point calculatePos(Rectangle bounds, FunctionPlotter parent) {
@@ -94,6 +130,19 @@ public class InfoBox extends DrawableComponent {
     }
 
     return new Point(xPos, yPos);
+  }
+
+  private String getFunctionString(DrawableFunction f, int xPos, FunctionPlotter parent) {
+    BigDecimal xV = BigDecimal.valueOf(f.valueAt(parent.getValueOfXPixel(xPos)))
+            .setScale(-parent.getPower()+3, RoundingMode.HALF_UP);
+    return "?(x)="+xV.toEngineeringString();
+    /**
+     * In the current implementation of {@link DrawableFunction} and
+     * {@link FunctionPlotter#drawFunctions(Graphics)}
+     * it is nearly impossible to get the name of a function.
+     * // TODO: Contact Gordian about that
+     */
+
   }
 
   @Override
