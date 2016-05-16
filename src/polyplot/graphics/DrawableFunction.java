@@ -1,9 +1,7 @@
 package polyplot.graphics;
 
 import java.awt.*;
-import java.awt.geom.Arc2D;
 import java.awt.geom.Path2D;
-import java.util.ArrayList;
 import java.util.Objects;
 
 import math.PureFunction;
@@ -28,6 +26,10 @@ public class DrawableFunction extends DrawableComponent {
 
     public boolean intersectsWith(final Point p, int radius, FunctionPlotter parent) {
         return this.path.intersects(p.x, p.y, radius, radius); // TODO maybe improve this (?)
+    }
+
+    public double valueAt(final double x) {
+        return function.fastOf(x);
     }
 
     @Override

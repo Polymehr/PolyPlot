@@ -169,6 +169,10 @@ public class FunctionPlotter extends JPanel implements Observer {
         return pow;
     }
 
+    List<DrawableFunction> getFunctions() {
+        return functions;
+    }
+
     /**
      * @return the bounds of the coordinate system. These can change if
      * some components are drawn that need a part of the screen space.
@@ -714,19 +718,20 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             String[] info = {
                     "DEBUG INFO:",
-                    "program_version   = \"" + PolyPlot.VERSION + "\"",
-                    "span_base         = \"" + spanBase + "\"",
-                    "span              = \"" + span + "\"",
-                    "span_x            = \"" + spanX + "\"",
-                    "span_y            = \"" + spanY + "\"",
-                    "x_corner          = \"" + xCorner + "\"",
-                    "y_corner          = \"" + yCorner + "\"",
-                    "value_per_x_pixel = \"" + getValueXPerPixel() + "\"",
-                    "value_per_y_pixel = \"" + getValueYPerPixel() + "\"",
-                    "zoom              = \"" + zoom + "\"",
-                    "zoom_base         = \"" + zoomBase + "\"",
-                    "power             = \"" + pow + "\"",
-                    "render_time       = \"" + renderTime + "ns\"",
+                    "program_version   = " + PolyPlot.VERSION,
+                    "span_base         = " + spanBase,
+                    "span              = " + span,
+                    "span_x            = " + spanX,
+                    "span_y            = " + spanY,
+                    "x_corner          = " + xCorner,
+                    "y_corner          = " + yCorner,
+                    "value_per_x_pixel = " + getValueXPerPixel(),
+                    "value_per_y_pixel = " + getValueYPerPixel(),
+                    "zoom              = " + zoom,
+                    "zoom_base         = " + zoomBase,
+                    "power             = " + pow,
+                    "resolution        = " + getWidth()+"x"+getHeight(),
+                    "render_time       = " + renderTime + "ns",
             };
             Font f = gc.getFont();
             gc.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
