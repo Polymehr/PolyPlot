@@ -24,8 +24,8 @@ public class DrawableFunction extends DrawableComponent {
         this.path = new Path2D.Double();
     }
 
-    public boolean intersectsWith(final Point p, int radius, FunctionPlotter parent) {
-        return this.path.intersects(p.x, p.y, radius, radius); // TODO maybe improve this (?)
+    public boolean intersectsWith(Point p, int radius, FunctionPlotter parent) {
+        return diff(parent.getPixelToYValue(this.function.of(p.x)), p.y) < radius;
     }
 
     public double valueAt(final double x) {
@@ -33,6 +33,7 @@ public class DrawableFunction extends DrawableComponent {
     }
 
     public void oldDraw(Graphics g, FunctionPlotter parent) {
+        if (this.hidden) return;
         g.setColor(this.foreground);
         ((Graphics2D)g).setStroke(STROKE);
         final int tmpWidth = parent.getWidth();
@@ -56,13 +57,14 @@ public class DrawableFunction extends DrawableComponent {
         ((Graphics2D) g).draw(this.path);
     }
 
-    private double diff(double d1, double d2) {
-        if (d1 < d2) return d2 - d1;
-        else return d1 - d2;
+    private int diff(int i1, int i2) {
+        if (i1 < i2) return i2 - i1;
+        else return i1 - i2;
     }
 
     @Override
     public void draw(Graphics g, FunctionPlotter parent) {
+        if (this.hidden) return;
         g.setColor(this.foreground);
         ((Graphics2D)g).setStroke(STROKE);
         double y, lastY = this.function.fastOf(parent.getValueOfXPixel(-1));
