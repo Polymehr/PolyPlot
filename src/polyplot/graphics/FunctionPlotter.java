@@ -49,6 +49,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     private final DebugGUI debug;
     private final InputField inputField;
     private final CheatSheet help;
+    private final FunctionOverview functionInfo;
 
     private final Compiler compiler;
     private List<DrawableFunction> functions;
@@ -85,8 +86,10 @@ public class FunctionPlotter extends JPanel implements Observer {
         toDraw = new LinkedList<>();
         overlayComponents = new LinkedList<>();
         toDraw.add(new Scale(o.scaleColor));
-        info = new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, true, 500);
+        info = new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, true, -1);
         overlayComponents.add(info);
+        functionInfo = new FunctionOverview(o.scaleColor, new Color(0xA0_000000 | o.backgroundColor.getRGB(), true), true, true, false);
+        overlayComponents.add(functionInfo);
         help = new CheatSheet(o.scaleColor, new Color(0xB8_EFFFFF, true), true);
         overlayComponents.add(help);
         inputField = new InputField(o.scaleColor, new Color(0x7F_FFFFFF, true), true, this);
@@ -173,6 +176,10 @@ public class FunctionPlotter extends JPanel implements Observer {
         return functions;
     }
 
+    CompilationContext getFunctionContext() {
+        return compiler.getContext();
+    }
+
     /**
      * @return the bounds of the coordinate system. These can change if
      * some components are drawn that need a part of the screen space.
@@ -190,8 +197,6 @@ public class FunctionPlotter extends JPanel implements Observer {
     JPanel getOverlay() {
         return overlay;
     }
-
-    private int paintCount = 0;
 
     @Override
     public void paintComponent(Graphics g) {
@@ -397,6 +402,16 @@ public class FunctionPlotter extends JPanel implements Observer {
             @Override
             public void actionPerformed(ActionEvent e) {
                 help.toggleHidden();
+                repaint();
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, 0), "toggleFuncInfo");
+        action.put("toggleFuncInfo", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                functionInfo.toggleHidden();
                 repaint();
             }
         });

@@ -28,15 +28,15 @@ public class DrawableFunction extends DrawableComponent {
         return diff(parent.getPixelToYValue(this.function.of(p.x)), p.y) < radius;
     }
 
-    public double valueAt(final double x) {
-        return function.fastOf(x);
+    public PureFunction getFunction() {
+        return function;
     }
 
     @Override
     public void draw(Graphics g, FunctionPlotter parent) {
         if (this.hidden) return;
         g.setColor(this.foreground);
-        ((Graphics2D)g).setStroke(STROKE);
+        //((Graphics2D)g).setStroke(STROKE);
         final int tmpWidth = parent.getWidth();
         final double tmpXCorner = parent.getXCorner();
         final double tmpYCorner = parent.getYCorner();
@@ -69,7 +69,7 @@ public class DrawableFunction extends DrawableComponent {
     public void drawLines(Graphics g, FunctionPlotter parent) {
         if (this.hidden) return;
         g.setColor(this.foreground);
-        ((Graphics2D)g).setStroke(STROKE);
+        //((Graphics2D)g).setStroke(STROKE);
         double y, lastY = this.function.fastOf(parent.getValueOfXPixel(-1));
         int lastXPixel = -1;
         for (int i = 0; i < parent.getWidth(); ++i) {
