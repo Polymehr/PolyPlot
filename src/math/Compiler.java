@@ -781,8 +781,8 @@ public final class Compiler {
         if (index.get() >= tokens.size())
             throw new IllegalStateException("expected constant definition, but expression ended");
 
-        final String name = this.symbol(tokens, index);
         final int startIndex = index.get();
+        final String name = this.symbol(tokens, index);
         if (index.get() >= tokens.size())
             throw new IllegalStateException("expected definition of constant " + name + ", but the expression ended"
                     + " (expected '=')");

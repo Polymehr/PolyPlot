@@ -1,9 +1,13 @@
 package polyplot.graphics;
 
+import math.Function;
+import math.PureFunction;
+
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.geom.Arc2D;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedList;
@@ -57,12 +61,12 @@ public class InfoBox extends DrawableComponent {
         break;
       case -1:
         for (DrawableFunction f : parent.getFunctions())
-          components.add(getFunctionString(f, mouse.x, parent));
+          components.add(getFunctionString(f.getFunction(), mouse.x, parent));
         break;
       default:
         for (DrawableFunction f : parent.getFunctions())
           if (f.intersectsWith(mouse, functionRadius, parent))
-            components.add(getFunctionString(f, mouse.x, parent));
+            components.add(getFunctionString(f.getFunction(), mouse.x, parent));
     }
 
     
@@ -95,7 +99,7 @@ public class InfoBox extends DrawableComponent {
         int yPos = pos.y - 1 + height * 2;
         for (DrawableFunction f : parent.getFunctions()) {
           gc.setColor(f.getForegroundColor());
-          gc.drawString(getFunctionString(f, mouse.x, parent), pos.x+3, yPos+=height);
+          gc.drawString(getFunctionString(f.getFunction(), mouse.x, parent), pos.x+3, yPos+=height);
         }
       }
       break;
@@ -105,7 +109,7 @@ public class InfoBox extends DrawableComponent {
         for (DrawableFunction f : parent.getFunctions())
           if (f.intersectsWith(mouse, functionRadius, parent)) {
             gc.setColor(f.getForegroundColor());
-            gc.drawString(getFunctionString(f, mouse.x, parent), pos.x+3, yPos+=height);
+            gc.drawString(getFunctionString(f.getFunction(), mouse.x, parent), pos.x+3, yPos+=height);
           }
     }
 
@@ -132,17 +136,17 @@ public class InfoBox extends DrawableComponent {
     return new Point(xPos, yPos);
   }
 
-  private String getFunctionString(DrawableFunction f, int xPos, FunctionPlotter parent) {
-    BigDecimal xV = BigDecimal.valueOf(f.valueAt(parent.getValueOfXPixel(xPos)))
+  private String getFunctionString(PureFunction f, int xPos, FunctionPlotter parent) {
+    double val = f.of(parent.getValueOfXPixel(xPos));
+    String calc =
+            // Special cases
+            Double.isNaN(val) ? "Undefined" :
+            Double.POSITIVE_INFINITY == val ? "∞" : Double.NEGATIVE_INFINITY == val ? "-∞" :
+            // else use rounded value
+            BigDecimal.valueOf(val).setScale(-parent.getPower()+3, RoundingMode.HALF_UP).toEngineeringString();
+    BigDecimal xVal = BigDecimal.valueOf(parent.getValueOfXPixel(xPos))
             .setScale(-parent.getPower()+3, RoundingMode.HALF_UP);
-    return "?(x)="+xV.toEngineeringString();
-    /**
-     * In the current implementation of {@link DrawableFunction} and
-     * {@link FunctionPlotter#drawFunctions(Graphics)}
-     * it is nearly impossible to get the name of a function.
-     * // TODO: Contact Gordian about that
-     */
-
+    return f.getName() + "(" + xVal + ") = " + calc;
   }
 
   @Override
