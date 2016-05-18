@@ -39,8 +39,8 @@ public class CompilationContext extends Observable {
                 throw new IllegalArgumentException("empty constant name");
             this.value = value;
             this.userDefined = userDefined;
-            this.fullExpression = fullExpression;
-            this.name = name;
+            this.fullExpression = Objects.requireNonNull(fullExpression, "constant expression must not be null");
+            this.name = Objects.requireNonNull(name, "constant name must not be null");
         }
 
         /**
@@ -134,9 +134,10 @@ public class CompilationContext extends Observable {
         this.constants = new HashMap<>();
         this.functions = new HashMap<>();
         if (!addDefaultFunctionsAndConstants) return;
-        addConstant("e", null, Math.E, false);
-        addConstant("pi", null, Math.PI, false);
-        addConstant("π", null, Math.PI, false); // in case someone wants to use the unicode-character
+        addConstant("e", "[native constant; value = " + Math.E + "]", Math.E, false);
+        addConstant("pi", "[native constant; value = " + Math.PI + "]", Math.PI, false);
+        // in case someone wants to use the unicode-character
+        addConstant("π", "[native constant; value = " + Math.PI + "]", Math.PI, false);
 
         addPureFunction("abs", Math::abs);
         addPureFunction("acos", Math::acos);

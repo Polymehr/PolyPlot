@@ -497,12 +497,13 @@ public final class Compiler {
     }
 
     private Node number(List<Token> tokens, MutableInteger index) {
-        if (index.get() >= tokens.size()) throw new IllegalStateException("expected number, but expression ended");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected a number, but the expression ended");
 
         final Token token = tokens.get(index.get());
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
-        else throw new IllegalStateException("expected number, but the expression ended (near " + token + ")");
+        else throw new IllegalStateException("expected a number, but the expression ended (near " + token + ")");
 
         if (token.isNumber()) return new Node(Double.parseDouble(token.getContent()));
         else if (token.isSymbol()) {
@@ -514,7 +515,7 @@ public final class Compiler {
                 if (this.arguments.contains(token.getContent()))
                     return new Node(this.arguments.indexOf(token.getContent()));
                 if (!this.context.hasConstant(token.getContent()))
-                    throw new IllegalStateException("non-existent constant: " + token.getContent());
+                    throw new IllegalStateException("the constant '" + token.getContent() + "' has not been defined");
 
                 return new Node(this.context.getConstant(token.getContent()));
             }
@@ -524,10 +525,10 @@ public final class Compiler {
 
             Node result = this.expression(tokens, index);
             if (index.get() >= tokens.size())
-                throw new IllegalStateException("expected closing bracket, but expression ended");
+                throw new IllegalStateException("expected a closing bracket, but the expression ended");
 
             if (!tokens.get(index.get()).isClosingBracket())
-                throw new IllegalStateException("expected closing bracket, but got '"
+                throw new IllegalStateException("expected a closing bracket, but got '"
                         + tokens.get(index.get()).getContent() + "'");
 
             if (index.get() < tokens.size()) index.set(index.get() + 1);
@@ -540,29 +541,31 @@ public final class Compiler {
 
     private Node functionCall(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected function call, but expression ended");
+            throw new IllegalStateException("expected a function call, but the expression ended");
 
         final Token token = tokens.get(index.get());
         if (!token.isSymbol() || !this.context.hasFunction(token.getContent()))
-            throw new IllegalStateException("non-existent function: " + token.getContent());
+            throw new IllegalStateException("the function '" + token.getContent() + "()' has not been defined");
 
         if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-        else throw new IllegalStateException("expected opening bracket but expression ended");
+        else throw new IllegalStateException("expected an opening bracket but the expression ended");
 
         final Token next = tokens.get(index.get());
         if (!next.isOpeningBracket()) throw new IllegalStateException("illegal function call: " + token.getContent());
 
         if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-        else throw new IllegalStateException("expected argument list but expression ended");
+        else throw new IllegalStateException("expected an argument list for '" + token.getContent()
+                + "()' but expression ended");
 
         final List<Node> args = this.argumentList(tokens, index);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected closing bracket after argument list for " + token.getContent()
-                    + ", but expression ended");
+            throw new IllegalStateException("expected a closing bracket after the argument list for '"
+                    + token.getContent() + "()'"
+                    + ", but the expression ended");
 
         if (!tokens.get(index.get()).isClosingBracket())
-            throw new IllegalStateException("expected closing bracket, but got: "
-                    + tokens.get(index.get()).getContent());
+            throw new IllegalStateException("expected a closing bracket, but got: '"
+                    + tokens.get(index.get()).getContent() + "'");
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
 
@@ -571,7 +574,7 @@ public final class Compiler {
 
     private List<Node> argumentList(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected argument list, but expression ended");
+            throw new IllegalStateException("expected an argument list, but the expression ended");
 
         final List<Node> arguments = new LinkedList<>();
         arguments.add(this.expression(tokens, index));
@@ -580,21 +583,24 @@ public final class Compiler {
 
         if (tokens.get(index.get()).isComma()) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected argument, comma or closing bracket but expression ended");
+            else
+                throw new IllegalStateException("expected an argument, a comma or a closing bracket but "
+                        + "the expression ended");
             arguments.addAll(this.argumentList(tokens, index));
         }
         return arguments;
     }
 
     private Node factor(List<Token> tokens, MutableInteger index) {
-        if (index.get() >= tokens.size()) throw new IllegalStateException("expected factor, but expression ended");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected a factor, but the expression ended");
 
         Token token = tokens.get(index.get());
         if (token.isUnaryOperator()) {
             UnaryOperation unaryOperator = UnaryOperation.ofSign(token.getContent());
 
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected factor but expression ended");
+            else throw new IllegalStateException("expected a factor but the expression ended");
 
             return new Node(unaryOperator.getOperation(), this.factor(tokens, index));
         } else
@@ -603,7 +609,7 @@ public final class Compiler {
 
     private Node power(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected exponential expression, but expression ended");
+            throw new IllegalStateException("expected an exponential expression, but the expression ended");
         Node number = this.number(tokens, index);
 
         if (index.get() >= tokens.size()
@@ -611,7 +617,7 @@ public final class Compiler {
             return number;
 
         if (index.get() < tokens.size() - 1) index.set(index.get() + 1); // skip "^" and go to start of factor
-        else throw new IllegalStateException("expected factor, but expression ended");
+        else throw new IllegalStateException("expected a factor, but the expression ended");
 
         Node factor = this.factor(tokens, index);
 
@@ -619,7 +625,8 @@ public final class Compiler {
     }
 
     private Node product(List<Token> tokens, MutableInteger index) {
-        if (index.get() >= tokens.size()) throw new IllegalStateException("expected product, but expression ended");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected a product, but the expression ended");
         Node result = this.factor(tokens, index);
 
         if (index.get() >= tokens.size()) return result;
@@ -629,7 +636,7 @@ public final class Compiler {
                BinaryOperation.MULTIPLICATION.getSign().equals(next.getContent()) ||
                BinaryOperation.MODULUS.getSign().equals(next.getContent())) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected factor, but expression ended");
+            else throw new IllegalStateException("expected a factor, but the expression ended");
 
             result = new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
                     result,
@@ -643,7 +650,7 @@ public final class Compiler {
 
     private Node expression(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected inner expression, but expression ended");
+            throw new IllegalStateException("expected an inner expression, but the expression ended");
         Node result = this.product(tokens, index);
 
         if (index.get() >= tokens.size()) return result;
@@ -652,7 +659,7 @@ public final class Compiler {
         while (BinaryOperation.PLUS.getSign().equals(next.getContent()) ||
                BinaryOperation.MINUS.getSign().equals(next.getContent())) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("expected product, but expression ended");
+            else throw new IllegalStateException("expected a product, but the expression ended");
 
             result = new Node(BinaryOperation.ofSign(next.getContent()).getOperation(),
                     result,
@@ -665,28 +672,32 @@ public final class Compiler {
     }
 
     private String symbol(List<Token> tokens, MutableInteger index) {
-        if (index.get() >= tokens.size()) throw new IllegalStateException("expected symbol, but expression ended");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected a symbol, but the expression ended");
         final Token token = tokens.get(index.get());
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
 
-        if (!token.isSymbol()) throw new IllegalStateException("expected symbol, but got: " + token.getContent());
+        if (!token.isSymbol())
+            throw new IllegalStateException("expected a symbol, but got: '" + token.getContent() + "'");
 
         return token.getContent();
     }
 
     private List<String> symbolList(List<Token> tokens, MutableInteger index) {
-        if (index.get() >= tokens.size()) throw new IllegalStateException("expected symbol list, but expression ended");
+        if (index.get() >= tokens.size())
+            throw new IllegalStateException("expected a symbol list, but the expression ended");
 
         final List<String> result = new LinkedList<>();
         result.add(this.symbol(tokens, index));
 
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("illegal end of expression after symbol list");
+            throw new IllegalStateException("illegal end of expression after symbol list "
+                    + "(expected a comma or a closing bracket)");
 
         if (tokens.get(index.get()).isComma()) {
             if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-            else throw new IllegalStateException("excepted argument, but expression ended");
+            else throw new IllegalStateException("expected a symbol, but the expression ended");
             result.addAll(this.symbolList(tokens, index));
         }
 
@@ -695,37 +706,38 @@ public final class Compiler {
 
     private Function functionDefinition(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected function definition, but expression ended");
+            throw new IllegalStateException("expected a function definition, but the expression ended");
 
         final int startIndex = index.get();
         final String name = this.symbol(tokens, index);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("illegal end of expression after function declaration of " + name);
+            throw new IllegalStateException("illegal end of expression after function declaration of '" + name + "'");
 
         if (!tokens.get(index.get()).isOpeningBracket())
-            throw new IllegalStateException("expected opening bracket, but got: "
-                    + tokens.get(index.get()).getContent());
+            throw new IllegalStateException("expected an opening bracket, but got: '"
+                    + tokens.get(index.get()).getContent() + "'");
 
         if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-        else throw new IllegalStateException("expected symbol list, but expression ended");
+        else throw new IllegalStateException("expected a symbol list, but the expression ended");
 
         final List<String> symbolList = this.symbolList(tokens, index);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("illegal end of expression after argument list of " + name);
+            throw new IllegalStateException("illegal end of expression after the argument list of '" + name + "()'");
 
         if (!tokens.get(index.get()).isClosingBracket())
-            throw new IllegalStateException("expected closing bracket, but got: "
-                    + tokens.get(index.get()).getContent());
+            throw new IllegalStateException("expected a closing bracket, but got: '"
+                    + tokens.get(index.get()).getContent() + "'");
 
         if (index.get() < tokens.size() - 1) index.set(index.get() + 1);
-        else throw new IllegalStateException("expected equals operator, but expression ended");
+        else throw new IllegalStateException("expected an equals operator, but the expression ended");
 
         if (!tokens.get(index.get()).isEqualsOperator())
-            throw new IllegalStateException("expected equals operator, but got: "
-                    + tokens.get(index.get()).getContent());
+            throw new IllegalStateException("expected an equals operator, but got: '"
+                    + tokens.get(index.get()).getContent() + "'");
 
         if (index.get() < tokens.size()) index.set(index.get() + 1);
-        else throw new IllegalStateException("expected function body of " + name + ", but the expression ended");
+        else throw new IllegalStateException("expected the function body of '"
+                + name + "()', but the expression ended");
 
         List<CompiledToken> compiled;
         if (this.useFallbackParser) {
@@ -757,7 +769,7 @@ public final class Compiler {
 
     private double constantValue(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected constant definition, but expression ended");
+            throw new IllegalStateException("expected a constant definition, but the expression ended");
 
         final List<CompiledToken> compiled;
         if (this.useFallbackParser)
@@ -768,31 +780,31 @@ public final class Compiler {
             compiled = expression.compile();
         }
 
-        if (compiled.size() != 1) throw new IllegalStateException("expected constant expression");
+        if (compiled.size() != 1) throw new IllegalStateException("expected a constant expression");
 
         CompiledToken token = compiled.get(0);
         if (token.type != CompiledToken.Type.NUMBER)
-            throw new IllegalStateException("expected number, but got: " + token);
+            throw new IllegalStateException("expected a number, but got: '" + token + "'");
 
         return token.number;
     }
 
     private double constantDefinition(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected constant definition, but expression ended");
+            throw new IllegalStateException("expected a constant definition, but the expression ended");
 
         final int startIndex = index.get();
         final String name = this.symbol(tokens, index);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected definition of constant " + name + ", but the expression ended"
-                    + " (expected '=')");
+            throw new IllegalStateException("expected a definition of the constant '"
+                    + name + "', but the expression ended" + " (expected '=')");
 
         if (!tokens.get(index.get()).isEqualsOperator())
-            throw new IllegalStateException("expected equals sign, but got: " + tokens.get(index.get()));
+            throw new IllegalStateException("expected equals operator, but got: '" + tokens.get(index.get()) + "'");
         index.set(index.get() + 1);
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected value or expression for constant " + name
-                    + ", but the expression ended");
+            throw new IllegalStateException("expected a value or an expression for the constant '" + name
+                    + "', but the expression ended");
 
         final double value;
         final Token tmpNext = tokens.get(index.get());
@@ -814,7 +826,8 @@ public final class Compiler {
 
     private void definition(List<Token> tokens, MutableInteger index) {
         if (index.get() >= tokens.size())
-            throw new IllegalStateException("expected definition, but expression ended");
+            throw new IllegalStateException("expected a definition of a constant or function,"
+                    + " but the expression ended");
 
         final int oldIndex = index.get();
         final String tmpSymbol = this.symbol(tokens, index);
@@ -826,7 +839,7 @@ public final class Compiler {
         index.set(oldIndex);
         if (tmpNext.isEqualsOperator()) this.constantDefinition(tokens, index);
         else if (tmpNext.isOpeningBracket()) this.functionDefinition(tokens, index);
-        else throw new IllegalStateException("expected '=' or an opening bracket, but got: " + tmpNext);
+        else throw new IllegalStateException("expected '=' or an opening bracket, but got: '" + tmpNext + "'");
 
         if (index.get() < tokens.size())
             throw new IllegalStateException("not the whole expression could be parsed (stopped at '"
