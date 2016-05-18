@@ -49,8 +49,7 @@ public class DrawableFunction extends DrawableComponent {
         this.lastYCorner = tmpYCorner;
 
         this.path.reset();
-        this.path.moveTo(0, 0);
-        boolean lastWasNaN = false;
+        boolean lastWasNaN = true;
         for (int i = -1, width = parent.getWidth(); i < width; ++i) {
             final double y = this.function.fastOf(parent.getValueOfXPixel(i));
             if (y == y) { // when y = NaN this is false
