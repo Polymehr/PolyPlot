@@ -32,7 +32,8 @@ public class DrawableFunction extends DrawableComponent {
         return function.fastOf(x);
     }
 
-    public void oldDraw(Graphics g, FunctionPlotter parent) {
+    @Override
+    public void draw(Graphics g, FunctionPlotter parent) {
         if (this.hidden) return;
         g.setColor(this.foreground);
         ((Graphics2D)g).setStroke(STROKE);
@@ -48,11 +49,15 @@ public class DrawableFunction extends DrawableComponent {
         this.lastYCorner = tmpYCorner;
 
         this.path.reset();
-        this.path.moveTo(-1, -1);
+        this.path.moveTo(0, 0);
+        boolean lastWasNaN = false;
         for (int i = -1, width = parent.getWidth(); i < width; ++i) {
             final double y = this.function.fastOf(parent.getValueOfXPixel(i));
-            if (y == y) // when y = NaN this is false
-                this.path.lineTo(i, parent.getPixelToYValue(y));
+            if (y == y) { // when y = NaN this is false
+                if (lastWasNaN) this.path.moveTo(i, parent.getPixelToYValue(y));
+                else this.path.lineTo(i, parent.getPixelToYValue(y));
+                lastWasNaN = false;
+            } else lastWasNaN = true;
         }
         ((Graphics2D) g).draw(this.path);
     }
@@ -62,8 +67,7 @@ public class DrawableFunction extends DrawableComponent {
         else return i1 - i2;
     }
 
-    @Override
-    public void draw(Graphics g, FunctionPlotter parent) {
+    public void drawLines(Graphics g, FunctionPlotter parent) {
         if (this.hidden) return;
         g.setColor(this.foreground);
         ((Graphics2D)g).setStroke(STROKE);
