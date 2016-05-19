@@ -55,7 +55,8 @@ public class CheatSheet extends DrawableComponent {
             "View:",
                 "F1", "Toggle the Cheat Sheet",
                 "b", "Toggle the info box",
-                "d",  "Toggle showing of defined functions and constants"
+                "p", "Toggle point rendering of functions",
+                "d", "Toggle showing of defined functions and constants"
         };
 
         final String[][] data = {movement, zoom, control, view};
