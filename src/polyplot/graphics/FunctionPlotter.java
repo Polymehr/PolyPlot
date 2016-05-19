@@ -437,6 +437,16 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "toggleDrawPoints");
+        action.put("toggleDrawPoints", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                DrawableFunction.DRAW_POINTS = !DrawableFunction.DRAW_POINTS;
+                repaint();
+            }
+        });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, 0), "toggleFuncInfo");
         action.put("toggleFuncInfo", new AbstractAction() {
             private static final long serialVersionUID = 1L;

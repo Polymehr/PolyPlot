@@ -2,27 +2,15 @@ package polyplot;
 
 import polyplot.graphics.PlotterController;
 
+import javax.swing.*;
+
 public class PolyPlot {
 
-    public static final String VERSION = "0.7.2";
-
-    private static PlotterController main;
-
-    // private static InputInterpreter in;
+    public static final String VERSION = "0.9.0";
 
     public static void main(String[] args) {
 
-
-        main = new PlotterController();
-
-        // in = new LinuxInputInterpreter(new CommandInterface(), null, 0);
-
-        // in.start();
+        SwingUtilities.invokeLater(PlotterController::new);
 
     }
-
-    public static PlotterController getMainPlotterController() {
-        return main;
-    }
-
 }
