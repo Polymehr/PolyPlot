@@ -88,7 +88,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         toDraw.add(new Scale(o.scaleColor));
         info = new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, true, -1);
         overlayComponents.add(info);
-        functionInfo = new FunctionOverview(o.scaleColor, new Color(0xA0_000000 | o.backgroundColor.getRGB(), true), true, true, false);
+        functionInfo = new FunctionOverview(o.scaleColor, new Color(0xA0_FFFFFF, true), true, true, false);
         overlayComponents.add(functionInfo);
         help = new CheatSheet(o.scaleColor, new Color(0xB8_EFFFFF, true), true);
         overlayComponents.add(help);
@@ -186,16 +186,48 @@ public class FunctionPlotter extends JPanel implements Observer {
      */
     public Rectangle getBounds() {
         Rectangle actual = super.getBounds();
-        return new Rectangle(actual.x - boundOffset.left, actual.y - boundOffset.top,
+        return new Rectangle(actual.x + boundOffset.left, actual.y + boundOffset.top,
                 actual.width - boundOffset.right, actual.height - boundOffset.bottom);
     }
 
-    public Insets getBoundOffset() {
-        return boundOffset;
+    boolean setBoundOffsetBottom(int value) {
+        boolean repaint = boundOffset.bottom != value;
+        boundOffset.bottom = value;
+        if(repaint)
+            repaint();
+        return repaint;
+    }
+
+    boolean setBoundOffsetLeft(int value) {
+        boolean repaint = boundOffset.left != value;
+        boundOffset.left = value;
+        if(repaint)
+            repaint();
+        return repaint;
+    }
+
+    boolean setBoundOffsetRight(int value) {
+        boolean repaint = boundOffset.right != value;
+        boundOffset.right = value;
+        if(repaint)
+            repaint();
+        return repaint;
+    }
+
+    boolean setBoundOffsetTop(int value) {
+        boolean repaint = boundOffset.top != value;
+        boundOffset.top = value;
+        if(repaint)
+            repaint();
+        return repaint;
     }
 
     JPanel getOverlay() {
         return overlay;
+    }
+
+    boolean isDebugActive() {
+        return !debug.isHidden();
     }
 
     @Override
@@ -422,7 +454,7 @@ public class FunctionPlotter extends JPanel implements Observer {
                 inputField.outputException(ex);
             }
         };
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "addFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), "addFunction");
         action.put("addFunction", new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
@@ -432,7 +464,7 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.SHIFT_DOWN_MASK), "addFunctionKeep");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK), "addFunctionKeep");
         action.put("addFunctionKeep", new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
@@ -442,6 +474,22 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0), "evaluate");
+        action.put("evaluate", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inputField.read("Evaluate", false, false, s -> {
+                    try {
+                        inputField.outputLine(s + " = " + compiler.constantExpression(s));
+                    } catch (Exception ex) {
+                        inputField.outputException(ex);
+                    }
+                }, FunctionPlotter.this);
+            }
+        });
+
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "reRender");
         action.put("reRender", new AbstractAction() {
             private static final long serialVersionUID = 1L;

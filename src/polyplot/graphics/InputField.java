@@ -112,9 +112,9 @@ public class InputField extends DrawableComponent {
         outputField.setVisible(!hidden && !hideOutput);
 
         if (super.hidden) {
-            parent.getBoundOffset().bottom = 0;
+            parent.setBoundOffsetBottom(0);
         } else {
-            parent.getBoundOffset().bottom = inputField.getHeight();
+            parent.setBoundOffsetBottom(inputField.getAdjustedHeight());
             outputField.setMaximumSize(new Dimension(parent.getWidth(), parent.getHeight()/2));
         }
     }
@@ -161,12 +161,20 @@ public class InputField extends DrawableComponent {
 
     public void outputException(Throwable t) {
         try {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            t.printStackTrace(pw);
+            String result;
 
-            String result = sw.toString().replaceAll("\t", "    ");
+            if (client.isDebugActive()) {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                t.printStackTrace(pw);
 
+                result = sw.toString().replaceAll("\t", "    ");
+            } else {
+                if (t.getMessage() == null || t.getMessage().trim().isEmpty())
+                    result = t.getClass().getSimpleName();
+                else
+                    result = t.getMessage();
+            }
             postString(result, ERROR);
 
         } catch (Throwable throwable) {
@@ -306,6 +314,10 @@ public class InputField extends DrawableComponent {
             }
             else
                 borderOffset = 0;
+        }
+
+        public int getAdjustedHeight() {
+            return super.getHeight()-borderOffset;
         }
     }
 
