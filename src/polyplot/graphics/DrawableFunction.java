@@ -82,7 +82,7 @@ public class DrawableFunction extends DrawableComponent {
     public void drawPoints(Graphics g, FunctionPlotter parent, boolean drawBuffer) {
         final Graphics2D g2d = (Graphics2D)g;
 
-        if (drawBuffer) {
+        if (drawBuffer && this.pixelBuffer != null) {
             g2d.drawImage(this.pixelBuffer, null, null);
             return;
         }
