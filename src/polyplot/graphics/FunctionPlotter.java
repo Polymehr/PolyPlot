@@ -487,6 +487,7 @@ public class FunctionPlotter extends JPanel implements Observer {
                         inputField.outputException(ex);
                     }
                 }, FunctionPlotter.this);
+                repaint();
             }
         });
 

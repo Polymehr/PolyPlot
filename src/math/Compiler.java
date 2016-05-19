@@ -808,7 +808,7 @@ public final class Compiler {
 
         final double value;
         final Token tmpNext = tokens.get(index.get());
-        if (tmpNext.isSymbol() && !this.context.hasConstant(tmpNext.getContent()))
+        if (tmpNext.isSymbol() && index.get() < tokens.size() - 1 && tokens.get(index.get() + 1).isEqualsOperator())
             value = this.constantDefinition(tokens, index);
         else value = constantValue(tokens, index);
         final int endIndex = index.get();
