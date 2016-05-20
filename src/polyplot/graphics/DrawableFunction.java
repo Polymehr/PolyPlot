@@ -47,9 +47,14 @@ public class DrawableFunction extends DrawableComponent {
         final double tmpYCorner = parent.getYCorner();
         if (tmpWidth == this.lastWidth && tmpXCorner == this.lastXCorner && tmpYCorner == this.lastYCorner
                 && tmpHeight == this.lastHeight) {
-            if (DRAW_POINTS) this.drawPoints(g, parent, true);
-            else ((Graphics2D) g).draw(this.path);
-            return;
+            if (DRAW_POINTS) {
+                this.drawPoints(g, parent, true);
+                return;
+            }
+            else if (this.pixelBuffer == null) {
+                ((Graphics2D) g).draw(this.path);
+                return;
+            }
         }
         this.lastWidth = tmpWidth;
         this.lastXCorner = tmpXCorner;
@@ -60,6 +65,8 @@ public class DrawableFunction extends DrawableComponent {
             this.drawPoints(g, parent, false);
             return;
         }
+
+        this.pixelBuffer = null;
 
         this.path.reset();
         boolean lastWasNaN = true;
