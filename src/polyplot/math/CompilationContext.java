@@ -1,4 +1,4 @@
-package math;
+package polyplot.math;
 
 import java.util.*;
 import java.util.function.DoubleBinaryOperator;
@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 /**
  * Stores the functions and constants produced by a {@link Compiler} and some defaults like "sin()" or "e".
  * NOTE: The observers will be notified whenever a function or constant is added. You can just check with
- *       {@code instanceof} whether it was a {@link Function} or {@link math.CompilationContext.Constant}.
+ *       {@code instanceof} whether it was a {@link Function} or {@link polyplot.math.CompilationContext.Constant}.
  *       Observers are not notified when a function/constant is removed, because removing only occurs while
  *       recompiling (and thus the respective (updated) item will be added again later again anyway)
  * @author 5hir0kur0
@@ -279,7 +279,7 @@ public class CompilationContext extends Observable {
     /**
      * Gets all the context's constants.
      * @param onlyUserDefined if {@code true}, only return user-defined constants
-     * @return a {@link List} of {@link math.CompilationContext.Constant}s
+     * @return a {@link List} of {@link polyplot.math.CompilationContext.Constant}s
      */
     public List<Constant> getConstants(boolean onlyUserDefined) {
         if (onlyUserDefined && !this.constantCacheInvalid && this.constantCache != null) return this.constantCache;

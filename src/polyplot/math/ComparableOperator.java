@@ -1,4 +1,4 @@
-package math;
+package polyplot.math;
 
 /**
  * Interface enabling operators to be compared.
