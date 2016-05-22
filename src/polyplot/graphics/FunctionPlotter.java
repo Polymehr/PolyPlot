@@ -1,7 +1,7 @@
 package polyplot.graphics;
 
-import math.*;
-import math.Compiler;
+import polyplot.math.*;
+import polyplot.math.Compiler;
 import polyplot.PolyPlot;
 
 import javax.script.ScriptEngine;
@@ -713,14 +713,15 @@ public class FunctionPlotter extends JPanel implements Observer {
             @Override
             public void mouseMoved(MouseEvent e) {
                 mouse = e.getPoint();
-                repaint();
+                if (!info.isHidden())
+                    repaint();
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
                 move(mouse, e.getPoint());
-                repaint();
                 mouse = e.getPoint();
+                repaint();
             }
 
         });
@@ -729,33 +730,22 @@ public class FunctionPlotter extends JPanel implements Observer {
             @Override
             public void mouseEntered(MouseEvent e) {
                 mouse = e.getPoint();
-                repaint();
+                if (!info.isHidden())
+                    repaint();
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
                 mouse = e.getPoint();
-                repaint();
-            }
-        });
-    }
-
-    private void registerWindowListeners() {
-        this.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                if (!o.autoCenter)
-                    updateSpans();
-                else {
-                    updateSpans();
-                }
+                if (!info.isHidden())
+                    repaint();
             }
         });
     }
 
     @Override
     public void repaint() {
-        if (o != null && !o.debug)
+        if (debug == null || debug.isHidden())
             super.repaint();
         else {
             renderTime = System.nanoTime();
@@ -771,7 +761,7 @@ public class FunctionPlotter extends JPanel implements Observer {
             if (f instanceof PureFunction) {
                 final Color tmp;
                 if (functionColors.containsKey(f.getName())) tmp = functionColors.get(f.getName());
-                else tmp = new Color(this.o.functionColors[functions.size() % this.o.functionColors.length]);
+                else tmp = new Color(this.o.functionColors[functionColors.size() % this.o.functionColors.length]);
                 functionColors.put(f.getName(), tmp);
                 functions.add(new DrawableFunction(tmp, (PureFunction) f));
             }

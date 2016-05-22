@@ -1,4 +1,4 @@
-package math;
+package polyplot.math;
 
 /**
  * Stores an integer that can be changed.

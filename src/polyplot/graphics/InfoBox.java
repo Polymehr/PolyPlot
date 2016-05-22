@@ -1,13 +1,11 @@
 package polyplot.graphics;
 
-import math.Function;
-import math.PureFunction;
+import polyplot.math.PureFunction;
 
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.geom.Arc2D;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedList;

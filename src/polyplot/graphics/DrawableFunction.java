@@ -6,7 +6,7 @@ import java.awt.image.BufferedImage;
 import java.util.Objects;
 import static java.lang.Double.NaN;
 
-import math.PureFunction;
+import polyplot.math.PureFunction;
 
 public class DrawableFunction extends DrawableComponent {
 

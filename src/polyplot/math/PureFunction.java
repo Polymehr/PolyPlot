@@ -1,4 +1,4 @@
-package math;
+package polyplot.math;
 
 import java.util.Objects;
 import java.util.function.DoubleUnaryOperator;

@@ -1,9 +1,7 @@
 package polyplot.graphics;
 
-import math.CompilationContext;
-import math.Function;
-import sun.java2d.pipe.PixelToParallelogramConverter;
-import sun.java2d.pipe.PixelToShapeConverter;
+import polyplot.math.CompilationContext;
+import polyplot.math.Function;
 
 import java.awt.*;
 import java.util.HashMap;
