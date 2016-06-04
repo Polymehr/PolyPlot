@@ -17,7 +17,7 @@ public class PlotterController extends JFrame {
 
         this.setSize(px, px);
 
-        this.add(plotter = new FunctionPlotter(20));
+        this.add(plotter = new FunctionPlotter());
 
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
