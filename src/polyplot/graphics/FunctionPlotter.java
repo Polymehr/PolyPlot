@@ -55,9 +55,10 @@ public class FunctionPlotter extends JPanel implements Observer {
     private List<DrawableFunction> functions;
     private final Map<String, Color> functionColors;
 
-    public FunctionPlotter(double span) {
-        if (span <= 0)
-            throw new IllegalArgumentException("Span cannot be negative or zero!");
+    public FunctionPlotter() {
+        o = Options.INSTANCE;
+        o.load();
+
         this.setLayout(new BorderLayout());
         super.setFocusable(true);
         super.requestFocusInWindow();
@@ -73,28 +74,31 @@ public class FunctionPlotter extends JPanel implements Observer {
         overlay.setBackground(new Color(0x00, true));
         overlay.setOpaque(false);
 
-        this.span = spanBase = span;
+        this.span = spanBase = o.span;
         yCorner = -(span / 2);
         xCorner = -(span / 2);
 
-        o = new Options();
         boundOffset = new Insets(0, 0, 0, 0);
 
         registerKeyBindings();
         registerMouseListener();
 
+        DrawableFunction.DRAW_POINTS = o.functionsPointRendering;
+
         toDraw = new LinkedList<>();
         overlayComponents = new LinkedList<>();
         toDraw.add(new Scale(o.scaleColor));
-        info = new InfoBox(o.scaleColor, new Color(0x50_000000 | o.backgroundColor.getRGB(), true), true, true, true, -1);
+        info = new InfoBox(o.infoBoxForeground, o.infoBoxBackground, o.infoBoxDocked, o.infoBoxShowPixels,
+                o.infoBoxHidden, o.infoBoxFunctionRadius);
         overlayComponents.add(info);
-        functionInfo = new FunctionOverview(o.scaleColor, new Color(0xA0_FFFFFF, true), true, true, false);
+        functionInfo = new FunctionOverview(o.functionOverviewForeground, o.functionOverviewBackground,
+                o.functionOverviewHidden, o.functionOverviewShowOnlyUserDefined, o.functionOverviewShowHidden);
         overlayComponents.add(functionInfo);
-        help = new CheatSheet(o.scaleColor, new Color(0xB8_EFFFFF, true), true);
+        help = new CheatSheet(o.cheatSheetForeground, o.cheatSheetBackground, true);
         overlayComponents.add(help);
-        inputField = new InputField(o.scaleColor, new Color(0x7F_FFFFFF, true), true, this);
+        inputField = new InputField(o.inputFieldForeground, o.inputFieldBackground, true, this);
         overlayComponents.add(inputField);
-        debug = this.new DebugGUI(new Color(0, 0, 0, 0xE0), new Color(0xFF, 0xFF, 0xFF, 0xE0), true);
+        debug = this.new DebugGUI(o.debugForeground, o.debugBackground, true);
         overlayComponents.add(debug);
 
 
@@ -105,7 +109,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         mouse = null;
 
         zoom = 0;
-        zoomBase = 1.05;
+        zoomBase = o.zoomBase;
 
         compiler = new Compiler(new CompilationContext(true));
         functions = new ArrayList<>(10);
@@ -252,17 +256,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         drawFunctions(g);
     }
 
-    private void paintOverlay(Graphics gc, boolean useCache) {
-        if (useCache) {
-            //TODO Draw Cache
-            overlay.repaint();
-        } else {
-            repaint();
-        }
-
-    }
-
-
     /**
      * Draws all functions that are registered in <code>functions</code>, in their color.
      *
@@ -316,7 +309,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     }
 
     private void updateSpans() {
-        if (o.stretch || getHeight() == getWidth()) {
+        if (o.scaleStretch || getHeight() == getWidth()) {
             spanY = span;
             spanX = span;
         } else if (getHeight() < getWidth()) {
