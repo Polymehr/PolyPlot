@@ -15,6 +15,10 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
+ * A component that represents a input field the user can use to input data.<br>
+ * The input field can process the data and output given output. The output can
+ * be formatted as errors, output or the normal output color.
+ *
  * @author Polymehr
  */
 public class InputField extends DrawableComponent {
@@ -37,7 +41,9 @@ public class InputField extends DrawableComponent {
     private final AttributeSet ERROR;
 
 
-    public InputField(Color foreground, Color background, boolean hidden, FunctionPlotter parent) {
+    InputField(Color foreground, Color background, boolean hidden,
+               Color outputColorDefault, Color outputColorOutput, Color outputColorError,
+               FunctionPlotter parent) {
         super(foreground, background, hidden);
         working = false;
         hideOutput = true;
@@ -47,8 +53,12 @@ public class InputField extends DrawableComponent {
         outputField = new TransparentTextPane();
 
         inputField .setVisible(false);
+        inputField.setForeground(super.foreground);
         inputField.setBackground(super.background);
+        inputField.setCaretColor(super.foreground);
+        outputField.setForeground(super.foreground);
         outputField.setBackground(super.background);
+        outputField.setCaretColor(super.background);
         outputField.setVisible(false);
         inputField.setEditable(true);
         inputField.setFont(FONT);
@@ -66,21 +76,21 @@ public class InputField extends DrawableComponent {
         parent.getOverlay().add(tmpPanel, BorderLayout.SOUTH);
 
         DEFAULT = new SimpleAttributeSet();
-        StyleConstants.setForeground((MutableAttributeSet) DEFAULT, foreground);
+        StyleConstants.setForeground((MutableAttributeSet) DEFAULT, outputColorDefault);
         StyleConstants.setBackground((MutableAttributeSet) DEFAULT, background);
         StyleConstants.setFontFamily((MutableAttributeSet) DEFAULT, Font.MONOSPACED);
         StyleConstants.setFontSize((MutableAttributeSet) DEFAULT, 11);
         OUTPUT = new SimpleAttributeSet(DEFAULT);
-        StyleConstants.setForeground((MutableAttributeSet) OUTPUT, new Color(0x4F4F4F));
+        StyleConstants.setForeground((MutableAttributeSet) OUTPUT, outputColorOutput);
         ERROR = new SimpleAttributeSet(DEFAULT);
-        StyleConstants.setForeground((MutableAttributeSet) ERROR, new Color(0x990000));
+        StyleConstants.setForeground((MutableAttributeSet) ERROR, outputColorError);
 
         Border tmpBorder = BorderFactory.createMatteBorder(1,0,0,0, foreground);
 
         title = BorderFactory.createTitledBorder(tmpBorder);
 
         title.setTitleFont(FONT);
-        title.setTitleColor(new Color(foreground.getRGB()+0x202020));
+        title.setTitleColor(foreground);
         title.setTitleJustification(TitledBorder.LEFT);
 
         inputField.setBorder(title);
@@ -119,7 +129,7 @@ public class InputField extends DrawableComponent {
         }
     }
 
-    public void read(String prompt, boolean keepField, boolean clearOutput, Consumer<String> toPerform, FunctionPlotter parent) {
+    void read(String prompt, boolean keepField, boolean clearOutput, Consumer<String> toPerform, FunctionPlotter parent) {
         if (working)
             return;
 
@@ -135,7 +145,7 @@ public class InputField extends DrawableComponent {
         this.clearOutput = clearOutput;
     }
 
-    public void outputLine(String output) {
+    void outputLine(String output) {
         try {
             postString(output, DEFAULT);
         } catch (BadLocationException e) {
@@ -143,7 +153,7 @@ public class InputField extends DrawableComponent {
         }
     }
 
-    public void outputOutput(String output) {
+    void outputOutput(String output) {
         try {
             postString(output, OUTPUT);
         } catch (BadLocationException e) {
@@ -151,7 +161,7 @@ public class InputField extends DrawableComponent {
         }
     }
 
-    public void outputError(String output) {
+    void outputError(String output) {
         try {
             postString(output, ERROR);
         } catch (BadLocationException e) {
@@ -159,7 +169,7 @@ public class InputField extends DrawableComponent {
         }
     }
 
-    public void outputException(Throwable t) {
+    void outputException(Throwable t) {
         try {
             String result;
 
@@ -195,11 +205,11 @@ public class InputField extends DrawableComponent {
 
     }
 
-    public void clearOutput() {
+    void clearOutput() {
         outputField.setText("");
     }
 
-    public void approve() {
+    void approve() {
         if (clearOutput)
             outputField.setText("");
         toPerform.accept(inputField.getText());
@@ -212,7 +222,7 @@ public class InputField extends DrawableComponent {
         }
     }
 
-    public void cancel() {
+    void cancel() {
         inputField.setText("");
         inputField.setVisible(false);
         outputField.setText("");
@@ -224,7 +234,7 @@ public class InputField extends DrawableComponent {
         client.enableKeyBindings(true);
     }
 
-    public static List<String> getArguments(CharSequence input) {
+    static List<String> getArguments(CharSequence input) {
         LinkedList<String> result = new LinkedList<>();
         StringBuilder argument = new StringBuilder();
 

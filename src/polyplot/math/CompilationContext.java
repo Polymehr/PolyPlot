@@ -137,7 +137,7 @@ public class CompilationContext extends Observable {
         addConstant("e", "[native constant; value = " + Math.E + "]", Math.E, false);
         addConstant("pi", "[native constant; value = " + Math.PI + "]", Math.PI, false);
         // in case someone wants to use the unicode-character
-        addConstant("π", "[native constant; value = " + Math.PI + "]", Math.PI, false);
+        addConstant("\u03C0", "[native constant; value = " + Math.PI + "]", Math.PI, false);
 
         addPureFunction("abs", Math::abs);
         addPureFunction("acos", Math::acos);
@@ -161,7 +161,7 @@ public class CompilationContext extends Observable {
         addPureFunction("sin", Math::sin);
         addPureFunction("sinh", Math::sinh);
         addPureFunction("sqrt", Math::sqrt);
-        addPureFunction("√", Math::sqrt);
+        addPureFunction("\u221A", Math::sqrt);
         addPureFunction("tan", Math::tan);
         addPureFunction("toDegrees", Math::toDegrees);
         addPureFunction("toRadians", Math::toRadians);

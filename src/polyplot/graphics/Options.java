@@ -1,14 +1,11 @@
 package polyplot.graphics;
 
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
-
-import javax.xml.bind.annotation.*;
 import java.awt.Color;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Paths;
-import java.util.*;
+import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 import java.util.function.DoublePredicate;
 import java.util.function.IntPredicate;
 import java.util.regex.Matcher;
@@ -28,44 +25,54 @@ enum Options {
     private static final String FILE_NAME = "options.pp";
 
     private static final String BG = "graphics.color.background";
-    private static final String BG_DEFAULT = "#FFFFFFFF";
+    private static final String BG_DEFAULT = "FFFFFFFF";
     Color backgroundColor;
+    private String backgroundString;
     private static final String SCALE_COLOR = "graphics.scale.color";
-    private static final String SCALE_COLOR_DEFAULT = "#000000FF";
+    private static final String SCALE_COLOR_DEFAULT = "000000FF";
     Color scaleColor;
 
     private static final String FKT_COLORS = "graphics.functions.colors";
-    private static final String FKT_COLORS_DEFAULT = "[#FF0000, #00FF00, #0000FF, #FFC800, #00FFFF, #FF00FF]";
+    private static final String FKT_COLORS_DEFAULT = "[FF0000, 00FF00, 0000FF, FFC800, 00FFFF, FF00FF]";
     Integer[] functionColors;
 
     private static final String BOX_FG = "graphics.info-box.foreground";
-    private static final String BOX_FG_DEFAULT = "#FF";
+    private static final String BOX_FG_DEFAULT = "FF";
     private static final String BOX_BG = "graphics.info-box.background";
-    private static final String BOX_BG_DEFAULT = "#50";
+    private static final String BOX_BG_DEFAULT = "50";
     Color   infoBoxForeground;
     Color   infoBoxBackground;
     private static final String OV_FG = "graphics.function-overview.foreground";
-    private static final String OV_FG_DEFAULT = "#FF";
+    private static final String OV_FG_DEFAULT = "FF";
     private static final String OV_BG = "graphics.function-overview.background";
-    private static final String OV_BG_DEFAULT = "#A0";
+    private static final String OV_BG_DEFAULT = "A0";
     Color   functionOverviewForeground;
     Color   functionOverviewBackground;
     private static final String HELP_FG = "graphics.cheat-sheet.foreground";
-    private static final String HELP_FG_DEFAULT = "#FF";
+    private static final String HELP_FG_DEFAULT = "FF";
     private static final String HELP_BG = "graphics.cheat-sheet.background";
-    private static final String HELP_BG_DEFAULT = "#B8";
+    private static final String HELP_BG_DEFAULT = "B8";
     Color   cheatSheetForeground;
     Color   cheatSheetBackground;
     private static final String INPUT_FG = "graphics.input.foreground";
-    private static final String INPUT_FG_DEFAULT = "#FF";
+    private static final String INPUT_FG_DEFAULT = "FF";
     private static final String INPUT_BG = "graphics.input.background";
-    private static final String INPUT_BG_DEFAULT = "#7F";
+    private static final String INPUT_BG_DEFAULT = "7F";
+    private static final String INPUT_OUT_DEF = "graphics.input.output-color.default";
+    private static final String INPUT_OUT_DEF_DEFAULT = "FF";
+    private static final String INPUT_OUT_OUT = "graphics.input.output-color.output";
+    private static final String INPUT_OUT_OUT_DEFAULT = "4F4F4F";
+    private static final String INPUT_OUT_ERR = "graphics.input.output-color.error";
+    private static final String INPUT_OUT_ERR_DEFAULT = "990000";
     Color   inputFieldForeground;
     Color   inputFieldBackground;
+    Color   inputFieldOutputDefault;
+    Color   inputFieldOutputOutput;
+    Color   inputFieldOutputError;
     private static final String DEBUG_FG = "graphics.debug.foreground";
-    private static final String DEBUG_FG_DEFAULT = "#E0";
+    private static final String DEBUG_FG_DEFAULT = "E0";
     private static final String DEBUG_BG = "graphics.debug.background";
-    private static final String DEBUG_BG_DEFAULT = "#E0";
+    private static final String DEBUG_BG_DEFAULT = "E0";
     Color   debugForeground;
     Color   debugBackground;
 
@@ -107,6 +114,10 @@ enum Options {
     private static final String SPAN_DEFAULT = "20";
     double span;
 
+    private static final String THEME = "graphics.theme";
+    private static final String THEME_DEFAULT = "default";
+    String theme;
+
     Options() {
         defaults = new Properties();
         options = new Properties(defaults);
@@ -137,12 +148,17 @@ enum Options {
 
         defaults.put(INPUT_BG, INPUT_BG_DEFAULT);
         defaults.put(INPUT_FG, INPUT_FG_DEFAULT);
+        defaults.put(INPUT_OUT_DEF, INPUT_OUT_DEF_DEFAULT);
+        defaults.put(INPUT_OUT_OUT, INPUT_OUT_OUT_DEFAULT);
+        defaults.put(INPUT_OUT_ERR, INPUT_OUT_ERR_DEFAULT);
 
         defaults.put(DEBUG_BG, DEBUG_BG_DEFAULT);
         defaults.put(DEBUG_FG, DEBUG_FG_DEFAULT);
 
         defaults.put(ZOOM_BASE, ZOOM_BASE_DEFAULT);
         defaults.put(SPAN, SPAN_DEFAULT);
+
+        defaults.put(THEME, THEME_DEFAULT);
     }
 
     private double getDoubleValue(String key, DoublePredicate isValid) {
@@ -152,9 +168,12 @@ enum Options {
             result = Double.parseDouble(value);
             if (isValid.test(result))
                 return result;
-            else
+            else {
+                System.err.println("[ERROR/Options]: Decimal number is invalid (" + key + "): " + value);
                 return Double.parseDouble(defaults.getProperty(key));
-            } catch (NumberFormatException | NullPointerException e) {
+            }
+        } catch (NumberFormatException | NullPointerException e) {
+            System.err.println("[ERROR/Options]: Illegal decimal number format (" + key + "): " + value);
             return Double.NaN;
         }
 
@@ -185,11 +204,12 @@ enum Options {
     private Color getColor(String key, boolean alphaAllowed) {
         String value = options.getProperty(key).trim().toLowerCase();
 
-        Pattern colorPattern = Pattern.compile("#([0-9a-f]{1,8})");
+        Pattern colorPattern = Pattern.compile("#?([0-9a-f]{1,8})");
         Matcher m = colorPattern.matcher(value);
         if (!m.matches()) {
-            System.err.println("Settings: Illegal color format: " + value);
-            m = colorPattern.matcher(value = defaults.getProperty(key).trim());
+            System.err.println("[ERROR/Options]: Illegal color format (" + key + "): " + value);
+            value  = defaults.getProperty(key).trim().toLowerCase();
+            m = colorPattern.matcher(value);
             if (!m.matches())
                 throw new IllegalStateException("Illegal format of default value!: " + key);
         }
@@ -213,18 +233,20 @@ enum Options {
     private Color getFromContext(String key, boolean foreground) {
         String value = options.getProperty(key).trim().toLowerCase();
 
-        Pattern colorPattern = Pattern.compile("#([0-9a-f]{1,8})");
+        Pattern colorPattern = Pattern.compile("#?([0-9a-f]{1,8})");
         Matcher m = colorPattern.matcher(value);
         if (!m.matches()) {
-            System.err.println("Settings: Illegal color format: " + value);
-            m = colorPattern.matcher(value = defaults.getProperty(key).trim());
+            System.err.println("[ERROR/Options]: Illegal color format (" + key + "): " + value);
+            value = defaults.getProperty(key).trim().toLowerCase();
+            m = colorPattern.matcher(value);
             if (!m.matches())
                 throw new IllegalStateException("Illegal format of default value!: " + key);
         }
         final String hex = m.group(1);
 
         String colorValue;
-        String context = (foreground ? SCALE_COLOR_DEFAULT : BG_DEFAULT).substring(1);
+        String context = String.format("%06x%02x", (foreground ? scaleColor : backgroundColor).getRGB() & 0xFFFFFF,
+                                                   (foreground ? scaleColor : backgroundColor).getAlpha());
 
         if (hex.length() == 0)
             colorValue = "FF" + context.substring(0, 6);
@@ -242,16 +264,16 @@ enum Options {
     private Integer[] getColorArray(String key) {
         String value = options.getProperty(key).trim().toLowerCase();
 
-        Pattern expression = Pattern.compile("\\s*\\[\\s*(#[0-9a-f]{1,6}\\s*(?:\\s*,\\s*#[0-9a-f]{1,6}\\s*)*)]\\s*");
-        Pattern colorPattern = Pattern.compile("#([0-9a-f]{1,6})");
+        Pattern expression = Pattern.compile("\\s*\\[\\s*(#?[0-9a-f]{1,6}\\s*(?:\\s*,\\s*#?[0-9a-f]{1,6}\\s*)*)]\\s*");
+        Pattern colorPattern = Pattern.compile("#?([0-9a-f]{1,6})");
         Matcher m = expression.matcher(value);
         if (!m.matches()) {
-            value = defaults.getProperty(key);
-            if ((m = expression.matcher(value)).matches())
+            System.err.println("[ERROR/Options]: Illegal color list format (" + key + "): " + value);
+            value = defaults.getProperty(key).trim().toLowerCase();
+            m = colorPattern.matcher(value);
+            if (m.matches())
                 throw new IllegalStateException("Illegal format of default value!: " + key);
         }
-
-        value = m.group(1); // Remove Brackets
 
         m = colorPattern.matcher(value);
         List<Integer> result = new ArrayList<>(6);
@@ -270,33 +292,77 @@ enum Options {
 
     }
 
+    private Path getTheme() {
+        theme = options.getProperty(THEME);
+        String extension = ".pp";
+        if (theme.isEmpty())
+            theme = defaults.getProperty(THEME_DEFAULT);
+        else if (theme.lastIndexOf('.') != -1) {
+            int index = theme.lastIndexOf('.');
+            extension = theme.substring(index);
+            theme = theme.substring(0, index-1);
+        }
+
+        try {
+            Path file = Paths.get("themes/" + theme + extension);
+            if (Files.exists(file))
+                return file;
+            else
+                return null;
+        } catch (InvalidPathException e) {
+            System.err.println("[ERROR/Options]: Invalid theme path: " + e.getMessage());
+            theme = defaults.getProperty(THEME_DEFAULT);
+            Path file = Paths.get("themes/" + theme + ".pp");
+            if (Files.exists(file))
+                return file;
+            else
+                return null;
+        }
+    }
+
 
 
     public void load() {
+        load(Paths.get(FILE_NAME), false);
+    }
+
+    private void load(Path file, boolean theme) {
         try {
-            options.load(Files.newBufferedReader(Paths.get(FILE_NAME)));
+            options.load(Files.newBufferedReader(file));
         } catch (NoSuchFileException e) {
-            System.out.println("[INFO] No Options file (\"" + FILE_NAME +"\") found.");
+            System.out.println("[INFO/Options]: No " + (theme ? "Theme" : "Options") + " file (\"" + file +"\") found" +
+                    ".");
+            if (theme) return;
         } catch (IOException e) {
             e.printStackTrace();
+            if (theme) return;
         }
 
-        this.zoomBase = getDoubleValue(ZOOM_BASE, d -> d == d && d != 0 &&
-                d != Double.NEGATIVE_INFINITY && d != Double.POSITIVE_INFINITY);
-        this.span = getDoubleValue(SPAN, d -> d == d && d > 0 && d != Double.POSITIVE_INFINITY);
-        this.scaleStretch = getBoolValue(SCALE_STRETCH);
+        if (!theme) {
 
-        this.infoBoxFunctionRadius = getIntValue(BOX_RADIUS, i -> i >= -1);
-        this.infoBoxDocked = getBoolValue(BOX_DOCKED);
-        this.infoBoxShowPixels = getBoolValue(BOX_PIXELS);
-        this.infoBoxHidden = getBoolValue(BOX_HIDE);
+            Path themeFile = getTheme();
+            if (themeFile != null)
+                load(themeFile, true);
 
-        this.functionOverviewShowHidden = getBoolValue(OV_SHOW_HIDDEN);
-        this.functionOverviewShowOnlyUserDefined = getBoolValue(OV_SHOW_USER);
-        this.functionOverviewHidden = getBoolValue(OV_HIDE);
+            this.zoomBase = getDoubleValue(ZOOM_BASE, d -> d == d && d != 0 &&
+                    d != Double.NEGATIVE_INFINITY && d != Double.POSITIVE_INFINITY);
+            this.span = getDoubleValue(SPAN, d -> d == d && d > 0 && d != Double.POSITIVE_INFINITY);
+            this.scaleStretch = getBoolValue(SCALE_STRETCH);
+
+            this.infoBoxFunctionRadius = getIntValue(BOX_RADIUS, i -> i >= -1);
+            this.infoBoxDocked = getBoolValue(BOX_DOCKED);
+            this.infoBoxShowPixels = getBoolValue(BOX_PIXELS);
+            this.infoBoxHidden = getBoolValue(BOX_HIDE);
+
+            this.functionOverviewShowHidden = getBoolValue(OV_SHOW_HIDDEN);
+            this.functionOverviewShowOnlyUserDefined = getBoolValue(OV_SHOW_USER);
+            this.functionOverviewHidden = getBoolValue(OV_HIDE);
+
+            this.functionsPointRendering = getBoolValue(FKT_POINT);
+
+        }
 
         this.functionColors = getColorArray(FKT_COLORS);
-        this.functionsPointRendering = getBoolValue(FKT_POINT);
 
         this.backgroundColor = getColor(BG, false);
         this.scaleColor = getColor(SCALE_COLOR, true);
@@ -315,6 +381,9 @@ enum Options {
 
         this.inputFieldForeground = getFromContext(INPUT_FG, true);
         this.inputFieldBackground = getFromContext(INPUT_BG, false);
+        this.inputFieldOutputDefault = getFromContext(INPUT_OUT_DEF, true);
+        this.inputFieldOutputOutput = getFromContext(INPUT_OUT_OUT, true);
+        this.inputFieldOutputError = getFromContext(INPUT_OUT_ERR, true);
     }
 
 }

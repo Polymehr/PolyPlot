@@ -1,13 +1,29 @@
 package polyplot.graphics;
 
-import java.awt.*;
+import polyplot.math.PureFunction;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
+
 import static java.lang.Double.NaN;
 
-import polyplot.math.PureFunction;
-
+/**
+ * A component that represents a function that can be drawn
+ * on the {@link FunctionPlotter}.<br>
+ * The function can be drawn using 3 different render styles:
+ * <ul>
+ *     <li>{@link Path2D}</li>
+ *     <li>points</li>
+ *     <li>lines</li>
+ * </ul>
+ *
+ * @author 5hir0kur0
+ */
 public class DrawableFunction extends DrawableComponent {
 
     private final PureFunction function;
@@ -18,17 +34,17 @@ public class DrawableFunction extends DrawableComponent {
     private double lastXCorner = NaN;
     private double lastYCorner = NaN;
 
-    public static boolean DRAW_POINTS = false;
+    static boolean DRAW_POINTS = false;
 
     private BufferedImage pixelBuffer;
 
-    public DrawableFunction(Color color, PureFunction function) {
+    DrawableFunction(Color color, PureFunction function) {
         super(color);
         this.function = Objects.requireNonNull(function, "function for DrawableFunction must not be null");
         this.path = new Path2D.Double();
     }
 
-    public boolean intersectsWith(Point p, int radius, FunctionPlotter parent) {
+    boolean intersectsWith(Point p, int radius, FunctionPlotter parent) {
         return diff(parent.getPixelToYValue(this.function.of(p.x)), p.y) < radius;
     }
 
@@ -86,7 +102,7 @@ public class DrawableFunction extends DrawableComponent {
         else return i1 - i2;
     }
 
-    public void drawPoints(Graphics g, FunctionPlotter parent, boolean drawBuffer) {
+    void drawPoints(Graphics g, FunctionPlotter parent, boolean drawBuffer) {
         final Graphics2D g2d = (Graphics2D)g;
 
         if (drawBuffer && this.pixelBuffer != null) {
@@ -113,7 +129,7 @@ public class DrawableFunction extends DrawableComponent {
         g2d.drawImage(this.pixelBuffer, null, null);
     }
 
-    public void drawLines(Graphics g, FunctionPlotter parent) {
+    void drawLines(Graphics g, FunctionPlotter parent) {
         if (this.hidden) return;
         g.setColor(this.foreground);
         //((Graphics2D)g).setStroke(STROKE);

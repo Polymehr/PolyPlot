@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * A component that represents a side view that shows all
+ * functions and constants defined in the given
+ * {@link FunctionPlotter}.
+ *
  * @author Polymehr
  */
 public class FunctionOverview extends DrawableComponent {
@@ -22,7 +26,7 @@ public class FunctionOverview extends DrawableComponent {
     private static String CONSTANT_LABEL = "Constants:";
 
 
-    public FunctionOverview(Color foreground, Color background, boolean hidden,
+    FunctionOverview(Color foreground, Color background, boolean hidden,
                             boolean showOnlyUserDefined, boolean showHidden) {
         super(foreground, background, hidden);
         this.showOnlyUserDefined = showOnlyUserDefined;
