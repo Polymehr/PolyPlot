@@ -1,16 +1,19 @@
 package polyplot.graphics;
 
-import java.awt.*;
-import java.awt.font.TextAttribute;
-import java.util.HashMap;
-import java.util.Map;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
 
 /**
+ * A component that represents a dialog that shows all possible
+ * key bindings of <i>PolyPlot</i>.<br>
+ * The key bindings are sorted by category.
+ *
  * @author Jannik
  */
 public class CheatSheet extends DrawableComponent {
 
-    public CheatSheet(Color foreground, Color background, boolean hidden) {
+    CheatSheet(Color foreground, Color background, boolean hidden) {
         super(foreground, background, hidden);
     }
 
@@ -23,40 +26,40 @@ public class CheatSheet extends DrawableComponent {
         final int margin = 10;
         final String[] movement = {
             "Movement:",
-                "(Shift+) ←, h", "Move left 10% of width (or 1px)",
-                "(Shift+) ↑, j", "Move up 10% of height (or 1px)",
-                "(Shift+) ↓, k", "Move down 10% of height (or 1px)",
-                "(Shift+) →, l", "Move right 10% of width (or 1px)",
+                "(Shift + ) \u2190 or H", "Move left 10% of width (or 1px)",
+                "(Shift + ) \u2191 or J", "Move up 10% of height (or 1px)",
+                "(Shift + ) \u2193 or K", "Move down 10% of height (or 1px)",
+                "(Shift + ) \u2192 or L", "Move right 10% of width (or 1px)",
                 "", "",
                 "<Mouse Dragging>", "Move coordinate system",
-                "(Alt+) Scroll Up/Down", "Move along x-axis in positive/negative direction (1px)",
-                "Shift+(Alt)+ Scroll Up/Down", "Move along y-axis in positive/negative direction (1px)",
+                "(Alt + ) Scroll Up/Down", "Move along x-axis in positive/negative direction (1px)",
+                "Shift + (Alt) + Scroll Up/Down", "Move along y-axis in positive/negative direction (1px)",
                 "", "",
                 "0", "Center the y-axis in the middle of the window",
-                "g", "Center the x-axis in the middle of the window",
-                "o", "Center the ordinate origin in the middle of the window",
+                "G", "Center the x-axis in the middle of the window",
+                "O", "Center the ordinate origin in the middle of the window",
         };
         final String[] zoom = {
             "Zoom:",
-                "Ctrl+(Shift)+ plus", "Zoom in (10x faster)",
-                "Ctrl+(Shift)+ minus", "Zoom out (10x faster)",
-                "Ctrl+0", "Reset Zoom",
+                "Ctrl + (Shift) + Plus", "Zoom in (10x faster)",
+                "Ctrl + (Shift) + Minus", "Zoom out (10x faster)",
+                "Ctrl + 0", "Reset Zoom",
                 "", "",
-                "Ctrl+(Shift)+ Scroll Up", "Zoom in (10x faster)",
-                "Ctrl+(Shift)+ Scroll Down", "Zoom out (10x faster)",
+                "Ctrl + (Shift) + Scroll Up", "Zoom in (10x faster)",
+                "Ctrl + (Shift) + Scroll Down", "Zoom out (10x faster)",
         };
         final String[] control = {
             "Control:",
-                "(Shift+) f", "Add a function or constant (and keep prompt open)",
-                "e", "Evaluate expression",
+                "(Shift + ) F", "Add a function or constant (and keep prompt open)",
+                "E", "Evaluate expression",
                 "ESC", "Close input field",
         };
         final String[] view = {
             "View:",
                 "F1", "Toggle the Cheat Sheet",
-                "b", "Toggle the info box",
-                "p", "Toggle point rendering of functions",
-                "d", "Toggle showing of defined functions and constants"
+                "B", "Toggle the info box",
+                "P", "Toggle point rendering of functions",
+                "D", "Toggle showing of defined functions and constants"
         };
 
         final String[][] data = {movement, zoom, control, view};

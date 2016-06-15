@@ -1,8 +1,9 @@
 package polyplot.graphics;
 
-import polyplot.math.*;
-import polyplot.math.Compiler;
 import polyplot.PolyPlot;
+import polyplot.math.CompilationContext;
+import polyplot.math.Compiler;
+import polyplot.math.PureFunction;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -16,6 +17,13 @@ import java.util.*;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * A {@link JPanel} that contains a ordinate system that can display
+ * {@link DrawableComponent}s. Each pixel of the <code>JPanel</code>
+ * has a numerical value and it is possible to zoom in or out.
+ *
+ * @author Jannik
+ */
 public class FunctionPlotter extends JPanel implements Observer {
 
     private static final long serialVersionUID = 1L;
@@ -55,7 +63,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     private List<DrawableFunction> functions;
     private final Map<String, Color> functionColors;
 
-    public FunctionPlotter() {
+    FunctionPlotter() {
         o = Options.INSTANCE;
         o.load();
 
@@ -96,14 +104,13 @@ public class FunctionPlotter extends JPanel implements Observer {
         overlayComponents.add(functionInfo);
         help = new CheatSheet(o.cheatSheetForeground, o.cheatSheetBackground, true);
         overlayComponents.add(help);
-        inputField = new InputField(o.inputFieldForeground, o.inputFieldBackground, true, this);
+        inputField = new InputField(o.inputFieldForeground, o.inputFieldBackground, true,
+                o.inputFieldOutputDefault, o.inputFieldOutputOutput, o.inputFieldOutputError, this);
         overlayComponents.add(inputField);
         debug = this.new DebugGUI(o.debugForeground, o.debugBackground, true);
         overlayComponents.add(debug);
 
 
-        //jlp.add(this, 0);
-        //jlp.add(overlay, 1);
         this.add(overlay, BorderLayout.CENTER);
 
         mouse = null;
@@ -120,59 +127,59 @@ public class FunctionPlotter extends JPanel implements Observer {
         updatePow();
     }
 
-    public double getValueXPerPixel() {
+    double getValueXPerPixel() {
         return spanX / getWidth();
     }
 
-    public double getValueYPerPixel() {
+    double getValueYPerPixel() {
         return spanY / getHeight();
     }
 
-    public double getValueOfXPixel(int pixel) {
+    double getValueOfXPixel(int pixel) {
         return xCorner + pixel * getValueXPerPixel();
     }
 
-    public double getValueOfYPixel(int pixel) {
+    double getValueOfYPixel(int pixel) {
         return (yCorner + (getHeight() - pixel - 1) * getValueYPerPixel());
     }
 
-    public int getPixelToYValue(double value) {
+    int getPixelToYValue(double value) {
         if (value == Double.NaN)
             throw new IllegalArgumentException("Value has to be a real number! " + value);
         return (int) (getHeight() - (value / getValueYPerPixel() - yCorner / getValueYPerPixel()) - 1);
     }
 
-    public int getPixelToXValue(double value) {
+    int getPixelToXValue(double value) {
         if (value == Double.NaN)
             throw new IllegalArgumentException("Value has to be a real number! " + value);
         return (int) ((value / getValueXPerPixel() - xCorner / getValueXPerPixel()) - 1);
     }
 
-    public double getYSpan() {
+    double getYSpan() {
         return spanY;
     }
 
-    public double getXCorner() {
+    double getXCorner() {
         return xCorner;
     }
 
-    public double getYCorner() {
+    double getYCorner() {
         return yCorner;
     }
 
-    public double getSpan() {
+    double getSpan() {
         return span;
     }
 
-    public double getXSpan() {
+    double getXSpan() {
         return spanX;
     }
 
-    public Point getMousePos() {
+    Point getMousePos() {
         return mouse;
     }
 
-    public int getPower() {
+    int getPower() {
         return pow;
     }
 
@@ -244,8 +251,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         updateSpans();
-//    xCorner+=5;
-//    yCorner+=5;
+
         g.setColor(o.backgroundColor);
         g.fillRect(0, 0, getWidth(), getHeight());
 
@@ -256,11 +262,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         drawFunctions(g);
     }
 
-    /**
-     * Draws all functions that are registered in <code>functions</code>, in their color.
-     *
-     * @param g
-     */
     private void drawFunctions(Graphics g) {
         for (DrawableFunction f : functions) f.draw(g, this);
     }
@@ -283,7 +284,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     }
 
 
-    public void zoom(Point center, int factor) {
+    void zoom(Point center, int factor) {
 
         int y0 = center.y, x0 = center.x;
 
@@ -296,7 +297,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         move(new Point(x1, y1), center);
     }
 
-    public void setZoom(Point center, int newValue) {
+    void setZoom(Point center, int newValue) {
         int y0 = center.y, x0 = center.x;
 
         double vy = getValueOfYPixel(y0), vx = getValueOfXPixel(x0);
@@ -764,7 +765,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private class DebugGUI extends DrawableComponent {
 
-        public DebugGUI(Color foreground, Color background, boolean hidden) {
+        DebugGUI(Color foreground, Color background, boolean hidden) {
             super(foreground, background, hidden);
         }
 
@@ -788,6 +789,7 @@ public class FunctionPlotter extends JPanel implements Observer {
                     "zoom_base         = " + zoomBase,
                     "power             = " + pow,
                     "resolution        = " + getWidth()+"x"+getHeight(),
+                    "theme             = " + o.theme,
                     "render_time       = " + renderTime + "ns",
             };
             Font f = gc.getFont();
