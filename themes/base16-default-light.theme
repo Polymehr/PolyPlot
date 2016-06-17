@@ -1,0 +1,20 @@
+# PolyPlot theme template
+# Base16 Default Light, by Chris Kempson (http://chriskempson.com)
+# template for base16-builder by Polymehr
+
+graphics.cheat-sheet.background=b8
+graphics.cheat-sheet.foreground=ff
+graphics.color.background=f8f8f8
+graphics.debug.foreground=e0
+graphics.function-overview.background=a0
+graphics.function-overview.foreground=ff
+graphics.functions.colors=[ab4642, dc9656, f7ca88, a1b56c, 86c1b9, 7cafc2, ba8baf, a16946]
+graphics.info-box.background=50
+graphics.info-box.foreground=ff
+graphics.input.background=7f
+graphics.input.foreground=ff
+graphics.input.output-color.default=ff
+graphics.input.output-color.error=ab4642
+graphics.input.output-color.input=7cafc2
+graphics.input.output-color.output=86c1b9
+graphics.scale.color=585858

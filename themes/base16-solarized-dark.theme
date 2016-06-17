@@ -1,0 +1,20 @@
+# PolyPlot theme template
+# Base16 Solarized Dark, by Ethan Schoonover (http://ethanschoonover.com/solarized)
+# template for base16-builder by Polymehr
+
+graphics.cheat-sheet.background=b8
+graphics.cheat-sheet.foreground=ff
+graphics.color.background=002b36
+graphics.debug.foreground=e0
+graphics.function-overview.background=a0
+graphics.function-overview.foreground=ff
+graphics.functions.colors=[dc322f, cb4b16, b58900, 859900, 2aa198, 268bd2, 6c71c4, d33682]
+graphics.info-box.background=50
+graphics.info-box.foreground=ff
+graphics.input.background=7f
+graphics.input.foreground=ff
+graphics.input.output-color.default=ff
+graphics.input.output-color.error=dc322f
+graphics.input.output-color.input=268bd2
+graphics.input.output-color.output=2aa198
+graphics.scale.color=93a1a1

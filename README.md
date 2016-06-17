@@ -8,7 +8,7 @@ will only take effect if that key is pressed.
 
 #### Movement
 Input                          | Action
--------------------------------|-------------------------------------------------------
+-------------------------------|----------------------------------------------------------
 (Shift + ) ←, H                | Move left 10% of width (or 1px)
 (Shift + ) ↑, J                | Move up 10% of height (or 1px)
 (Shift + ) ↓, K                | Move down 10% of height (or 1px)
@@ -22,7 +22,7 @@ O                              | Center the ordinate origin in the middle of the
 
 #### Zoom
 Input                          | Action
--------------------------------|-------------------------------------------------------
+-------------------------------|----------------------------------------------------------
 Ctrl + (Shift) + plus          | Zoom in (10x faster)
 Ctrl + (Shift) + minus         | Zoom out (10x faster)
 Ctrl + 0                       | Reset Zoom
@@ -31,14 +31,16 @@ Ctrl + (Shift) + Scroll Down   | Zoom out (10x faster)
 
 #### Control
 Input                          | Action
--------------------------------|-------------------------------------------------------
-(Shift + ) F                   | Add a function or constant (and keep prompt open)
+-------------------------------|----------------------------------------------------------
+(Shift + ) A                   | Add a function or constant (and keep prompt open)
+(Shift + ) F                   | Add a function, nameless possible (and keep prompt open)
+(Shift + ) C                   | Add a constant, nameless possible (and keep prompt open)
 E                              | Evaluate expression
 ESC                            | Close input field
 
 #### View
 Input                          | Action
--------------------------------|-------------------------------------------------------
+-------------------------------|----------------------------------------------------------
 F1                             | Toggle an internal help panel
 B                              | Toggle the info box
 P                              | Toggle point rendering of functions

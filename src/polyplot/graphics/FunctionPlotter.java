@@ -12,10 +12,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
-import java.io.StringWriter;
+import java.io.*;
 import java.util.*;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A {@link JPanel} that contains a ordinate system that can display
@@ -30,7 +32,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private long renderTime;
 
-    private List<DrawableComponent> toDraw;
+    private List<DrawableComponent> underlayComponents;
     private List<DrawableComponent> overlayComponents;
 
     private Insets boundOffset;
@@ -43,6 +45,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private final double spanBase;
     private double span, spanX, spanY;
+    private int lastWidth = 0, lastHeight = 0;
 
     private Point mouse;
 
@@ -53,6 +56,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
 
     private final JPanel overlay;
+    private final Scale scale;
     private final InfoBox info;
     private final DebugGUI debug;
     private final InputField inputField;
@@ -93,19 +97,21 @@ public class FunctionPlotter extends JPanel implements Observer {
 
         DrawableFunction.DRAW_POINTS = o.functionsPointRendering;
 
-        toDraw = new LinkedList<>();
+        underlayComponents = new LinkedList<>();
         overlayComponents = new LinkedList<>();
-        toDraw.add(new Scale(o.scaleColor));
+        scale = new Scale(o.scaleColor);
+        underlayComponents.add(scale);
         info = new InfoBox(o.infoBoxForeground, o.infoBoxBackground, o.infoBoxDocked, o.infoBoxShowPixels,
                 o.infoBoxHidden, o.infoBoxFunctionRadius);
         overlayComponents.add(info);
         functionInfo = new FunctionOverview(o.functionOverviewForeground, o.functionOverviewBackground,
-                o.functionOverviewHidden, o.functionOverviewShowOnlyUserDefined, o.functionOverviewShowHidden);
+                o.functionOverviewHidden, true, o.functionOverviewShowHidden);
         overlayComponents.add(functionInfo);
         help = new CheatSheet(o.cheatSheetForeground, o.cheatSheetBackground, true);
         overlayComponents.add(help);
         inputField = new InputField(o.inputFieldForeground, o.inputFieldBackground, true,
-                o.inputFieldOutputDefault, o.inputFieldOutputOutput, o.inputFieldOutputError, this);
+                o.inputFieldOutputDefault, o.inputFieldOutputInput, o.inputFieldOutputOutput, o.inputFieldOutputError,
+                this);
         overlayComponents.add(inputField);
         debug = this.new DebugGUI(o.debugForeground, o.debugBackground, true);
         overlayComponents.add(debug);
@@ -250,12 +256,17 @@ public class FunctionPlotter extends JPanel implements Observer {
         g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        updateSpans();
+        if (this.getWidth() != lastWidth && this.getHeight() != lastHeight) {
+            lastWidth  = this.getWidth();
+            lastHeight = this.getHeight();
+
+            updateSpans();
+        }
 
         g.setColor(o.backgroundColor);
         g.fillRect(0, 0, getWidth(), getHeight());
 
-        for (DrawableComponent dc : toDraw) {
+        for (DrawableComponent dc : underlayComponents) {
             dc.draw(g, this);
         }
 
@@ -451,11 +462,82 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
-        Consumer<String> addFunction = s -> {
+        Consumer<String> addFunctionConstant = s -> {
             try {
                 compiler.definition(s);
-            } catch (IllegalArgumentException|IllegalStateException ex) {
-                inputField.outputException(ex);
+            } catch (IllegalArgumentException|IllegalStateException|NullPointerException ex) {
+                inputField.postException(ex);
+            }
+        };
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "addFunctionConstant");
+        action.put("addFunction", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inputField.read("Add function or constant", false, true, addFunctionConstant, FunctionPlotter.this);
+                repaint();
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.SHIFT_DOWN_MASK), "addFunctionConstantKeep");
+        action.put("addFunctionKeep", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inputField.read("Add function or constant", true, true, addFunctionConstant, FunctionPlotter.this);
+                repaint();
+            }
+        });
+
+        Consumer<String> addFunction = s -> {
+            String[] functions = s.split(";");
+            StringBuilder result = new StringBuilder(s.length());
+            final Pattern fp = Pattern.compile("^\\s*(\\w+)\\s*\\(\\s*\\w+\\s*\\)\\s*=.*?$");
+
+            List<String> functionNames = new LinkedList<>();
+
+            for (String func : functions) {
+                Matcher m = fp.matcher(func);
+                if (m.matches())
+                    functionNames.add(m.group(1));
+            }
+
+            CompilationContext context = compiler.getContext();
+            final char[] alphabet =
+                    {
+                            'a', 'b', 'c', 'd', 'e', 'f',
+                            'g', 'h', 'i', 'j', 'k', 'l',
+                            'm', 'n', 'o', 'p', 'q', 'r',
+                            's', 't', 'u', 'v', 'w', 'x',
+                            'y', 'z'
+                    };
+            StringBuilder name = new StringBuilder("e");
+            for (String func : functions)
+                if (func.contains("="))
+                    result.append(" ").append(func).append(";");
+                else {
+                    do {
+                        // Generate next name
+                        for (int i = name.length()-1;;) {
+                            int next = (name.charAt(i) - 0x60) % 26;
+                            name.setCharAt(i, alphabet[next]);
+                            if (next == 0)
+                                if (i-- > 0)
+                                    continue;
+                                else
+                                    name.append('a');
+                            break;
+                        }
+                    } while (context.hasFunction(name.toString()) ||
+                             functionNames.contains(name.toString()));
+                    // Found a name.
+                    result.append(" ").append(name).append("(x) = ").append(func).append(";");
+                }
+            try {
+                compiler.definition(result.toString());
+            } catch (IllegalArgumentException|IllegalStateException|NullPointerException ex) {
+                inputField.postException(ex);
             }
         };
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), "addFunction");
@@ -464,7 +546,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                inputField.read("Add function or constant", false, true, addFunction, FunctionPlotter.this);
+                inputField.read("Add function", false, true, addFunction, FunctionPlotter.this);
                 repaint();
             }
         });
@@ -474,7 +556,77 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                inputField.read("Add function or constant", true, true, addFunction, FunctionPlotter.this);
+                inputField.read("Add function", true, true, addFunction, FunctionPlotter.this);
+                repaint();
+            }
+        });
+        Consumer<String> addConstant = s -> {
+            String[] constants = s.split(";");
+            StringBuilder result = new StringBuilder(s.length());
+            final Pattern fp = Pattern.compile("^\\s*(\\w+)\\s*=.*?$");
+
+            List<String> constantNames = new LinkedList<>();
+
+            for (String con : constants) {
+                Matcher m = fp.matcher(con);
+                if (m.matches())
+                    constantNames.add(m.group(1));
+            }
+
+            CompilationContext context = compiler.getContext();
+            final char[] alphabet =
+                    {
+                            'a', 'b', 'c', 'd', 'e', 'f',
+                            'g', 'h', 'i', 'j', 'k', 'l',
+                            'm', 'n', 'o', 'p', 'q', 'r',
+                            's', 't', 'u', 'v', 'w', 'x',
+                            'y', 'z'
+                    };
+            StringBuilder name = new StringBuilder("c");
+            for (String con : constants)
+                if (con.contains("="))
+                    result.append(" ").append(con).append(";");
+                else {
+                    do {
+                        // Generate next name
+                        for (int i = name.length()-1;;) {
+                            int next = (name.charAt(i) - 0x60) % 26;
+                            name.setCharAt(i, alphabet[next]);
+                            if (next == 0)
+                                if (i-- > 0)
+                                    continue;
+                                else
+                                    name.append('a');
+                            break;
+                        }
+                    } while (context.hasFunction(name.toString()) ||
+                            constantNames.contains(name.toString()));
+                    // Found a name.
+                    result.append(" ").append(name).append(" = ").append(con).append(";");
+                }
+            try {
+                compiler.definition(result.toString());
+            } catch (IllegalArgumentException|IllegalStateException|NullPointerException ex) {
+                inputField.postException(ex);
+            }
+        };
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0), "addConstant");
+        action.put("addConstant", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inputField.read("Add constant", false, true, addConstant, FunctionPlotter.this);
+                repaint();
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.SHIFT_DOWN_MASK), "addConstantKeep");
+        action.put("addConstantKeep", new AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                inputField.read("Add constant", true, true, addConstant, FunctionPlotter.this);
                 repaint();
             }
         });
@@ -486,9 +638,9 @@ public class FunctionPlotter extends JPanel implements Observer {
             public void actionPerformed(ActionEvent e) {
                 inputField.read("Evaluate", false, false, s -> {
                     try {
-                        inputField.outputLine(s + " = " + compiler.constantExpression(s));
+                        inputField.postLine(s + " = " + compiler.constantExpression(s));
                     } catch (Exception ex) {
-                        inputField.outputException(ex);
+                        inputField.postException(ex);
                     }
                 }, FunctionPlotter.this);
                 repaint();
@@ -524,14 +676,30 @@ public class FunctionPlotter extends JPanel implements Observer {
                 ScriptEngine js = sem.getEngineByName("JavaScript");
                 StringWriter sw = new StringWriter();
                 js.getContext().setWriter(sw);
-                js.put("fp", FunctionPlotter.this);
+                js.put("__internal_fp", FunctionPlotter.this);
 
                 try {
-                    js.eval("function hack(obj, field) {" +
-                            "var field = obj.getClass().getDeclaredField(field);" +
-                            "field.setAccessible(true);" +
-                            "return field;" +
-                            "}");
+            //        js.eval("function hack(obj, field) {" +
+            //                "var field = obj.getClass().getDeclaredField(field);" +
+            //                "field.setAccessible(true);" +
+            //                "return field;" +
+            //               "}");
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                            FunctionPlotter.class.getResourceAsStream("scripts/debug.js")))) {
+                        StringBuilder result = new StringBuilder(420);
+                        String input;
+                        while ((input = br.readLine()) != null)
+                            result.append(input).append('\n');
+
+                        js.eval(result.toString());
+
+                        js.eval("var fp = hack(__internal_fp)");
+
+                    } catch (IOException ex) {
+                        inputField.postError("Could not read debug script!");
+                        inputField.postException(ex);
+                    }
+
                 } catch (ScriptException e1) {
                     e1.printStackTrace();
                 }
@@ -539,18 +707,19 @@ public class FunctionPlotter extends JPanel implements Observer {
                 inputField.read("Console", true, false, x -> {
                     try {
                         Object o = js.eval(x);
-                        inputField.outputOutput("<< " + Objects.toString(o, "undefined"));
+                        inputField.postInput(">> " + x);
                         try (Scanner s = new Scanner(sw.toString())) {
                             for (int l = 0; s.hasNextLine(); ++l) {
                                 if (l >= outputLineCount[0]) {
                                     ++outputLineCount[0];
-                                    inputField.outputLine(s.nextLine());
+                                    inputField.postLine(s.nextLine());
                                 } else
                                     s.nextLine();
                             }
                         }
-                    } catch (ScriptException se) {
-                        inputField.outputException(se);
+                        inputField.postOutput("<< " + Objects.toString(o, "undefined"));
+                    } catch (Exception ex) {
+                        inputField.postException(ex);
                     }
                 }, FunctionPlotter.this);
                 repaint();
