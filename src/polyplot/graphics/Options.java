@@ -22,7 +22,7 @@ enum Options {
     private Properties options;
     private Properties defaults;
 
-    private static final String FILE_NAME = "options.pp";
+    private static final String FILE_NAME = "options.conf";
 
     private static final String BG = "graphics.color.background";
     private static final String BG_DEFAULT = "FFFFFFFF";
@@ -60,6 +60,8 @@ enum Options {
     private static final String INPUT_BG_DEFAULT = "7F";
     private static final String INPUT_OUT_DEF = "graphics.input.output-color.default";
     private static final String INPUT_OUT_DEF_DEFAULT = "FF";
+    private static final String INPUT_OUT_IN = "graphics.input.output-color.input";
+    private static final String INPUT_OUT_IN_DEFAULT = "3F3F3F";
     private static final String INPUT_OUT_OUT = "graphics.input.output-color.output";
     private static final String INPUT_OUT_OUT_DEFAULT = "4F4F4F";
     private static final String INPUT_OUT_ERR = "graphics.input.output-color.error";
@@ -67,6 +69,7 @@ enum Options {
     Color   inputFieldForeground;
     Color   inputFieldBackground;
     Color   inputFieldOutputDefault;
+    Color   inputFieldOutputInput;
     Color   inputFieldOutputOutput;
     Color   inputFieldOutputError;
     private static final String DEBUG_FG = "graphics.debug.foreground";
@@ -94,9 +97,6 @@ enum Options {
     private static final String OV_SHOW_HIDDEN = "graphics.function-overview.show-hidden";
     private static final String OV_SHOW_HIDDEN_DEFAULT = "false";
     boolean functionOverviewShowHidden;
-    private static final String OV_SHOW_USER = "graphics.function-overview.only-show-user-defined";
-    private static final String OV_SHOW_USER_DEFAULT = "true";
-    boolean functionOverviewShowOnlyUserDefined;
 
     private static final String SCALE_STRETCH = "graphics.scale.stretch";
     private static final String SCALE_STRETCH_DEFAULT = "false";
@@ -140,7 +140,6 @@ enum Options {
         defaults.put(OV_BG, OV_BG_DEFAULT);
         defaults.put(OV_FG, OV_FG_DEFAULT);
         defaults.put(OV_SHOW_HIDDEN, OV_SHOW_HIDDEN_DEFAULT);
-        defaults.put(OV_SHOW_USER, OV_SHOW_USER_DEFAULT);
         defaults.put(OV_HIDE, OV_HIDE_DEFAULT);
 
         defaults.put(HELP_BG, HELP_BG_DEFAULT);
@@ -149,6 +148,7 @@ enum Options {
         defaults.put(INPUT_BG, INPUT_BG_DEFAULT);
         defaults.put(INPUT_FG, INPUT_FG_DEFAULT);
         defaults.put(INPUT_OUT_DEF, INPUT_OUT_DEF_DEFAULT);
+        defaults.put(INPUT_OUT_IN, INPUT_OUT_IN_DEFAULT);
         defaults.put(INPUT_OUT_OUT, INPUT_OUT_OUT_DEFAULT);
         defaults.put(INPUT_OUT_ERR, INPUT_OUT_ERR_DEFAULT);
 
@@ -294,29 +294,34 @@ enum Options {
 
     private Path getTheme() {
         theme = options.getProperty(THEME);
-        String extension = ".pp";
+        String extension = ".theme";
         if (theme.isEmpty())
             theme = defaults.getProperty(THEME_DEFAULT);
         else if (theme.lastIndexOf('.') != -1) {
             int index = theme.lastIndexOf('.');
             extension = theme.substring(index);
-            theme = theme.substring(0, index-1);
+            theme = theme.substring(0, index);
         }
 
         try {
             Path file = Paths.get("themes/" + theme + extension);
             if (Files.exists(file))
                 return file;
-            else
+            else {
+                System.err.println("[ERROR/Options]: No theme with name '" + theme + "' found (at '" + file + "')");
+                theme = "<internal>";
                 return null;
+            }
         } catch (InvalidPathException e) {
             System.err.println("[ERROR/Options]: Invalid theme path: " + e.getMessage());
             theme = defaults.getProperty(THEME_DEFAULT);
-            Path file = Paths.get("themes/" + theme + ".pp");
+            Path file = Paths.get("themes/" + theme + ".theme");
             if (Files.exists(file))
                 return file;
-            else
+            else {
+                theme = "<internal>";
                 return null;
+            }
         }
     }
 
@@ -355,7 +360,6 @@ enum Options {
             this.infoBoxHidden = getBoolValue(BOX_HIDE);
 
             this.functionOverviewShowHidden = getBoolValue(OV_SHOW_HIDDEN);
-            this.functionOverviewShowOnlyUserDefined = getBoolValue(OV_SHOW_USER);
             this.functionOverviewHidden = getBoolValue(OV_HIDE);
 
             this.functionsPointRendering = getBoolValue(FKT_POINT);
@@ -382,6 +386,7 @@ enum Options {
         this.inputFieldForeground = getFromContext(INPUT_FG, true);
         this.inputFieldBackground = getFromContext(INPUT_BG, false);
         this.inputFieldOutputDefault = getFromContext(INPUT_OUT_DEF, true);
+        this.inputFieldOutputInput = getFromContext(INPUT_OUT_IN, true);
         this.inputFieldOutputOutput = getFromContext(INPUT_OUT_OUT, true);
         this.inputFieldOutputError = getFromContext(INPUT_OUT_ERR, true);
     }

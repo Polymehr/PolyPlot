@@ -50,7 +50,9 @@ public class CheatSheet extends DrawableComponent {
         };
         final String[] control = {
             "Control:",
-                "(Shift + ) F", "Add a function or constant (and keep prompt open)",
+                "(Shift + ) A", "Add a function or constant (and keep prompt open)",
+                "(Shift + ) F", "Add a function (and keep prompt open)",
+                "(Shift + ) C", "Add a constant (and keep prompt open)",
                 "E", "Evaluate expression",
                 "ESC", "Close input field",
         };

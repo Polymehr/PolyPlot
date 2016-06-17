@@ -9,6 +9,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -30,19 +31,24 @@ public class InputField extends DrawableComponent {
     private final TransparentTextArea inputField;
     private final TransparentTextPane outputField;
 
+    private final List<String> inputHistory;
+    private int historyIndexOffset = 0;
+    private String currentInput;
+
     private boolean working;
     private boolean hideOutput;
     private boolean keepField;
     private boolean clearOutput;
 
-    private static final Font FONT = new Font(Font.MONOSPACED, Font.PLAIN, 11);
+    private static final Font FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
     private final AttributeSet DEFAULT;
+    private final AttributeSet INPUT;
     private final AttributeSet OUTPUT;
     private final AttributeSet ERROR;
 
 
     InputField(Color foreground, Color background, boolean hidden,
-               Color outputColorDefault, Color outputColorOutput, Color outputColorError,
+               Color outputColorDefault, Color outputColorInput, Color outputColorOutput, Color outputColorError,
                FunctionPlotter parent) {
         super(foreground, background, hidden);
         working = false;
@@ -51,6 +57,7 @@ public class InputField extends DrawableComponent {
 
         inputField = new TransparentTextArea();
         outputField = new TransparentTextPane();
+        inputHistory = new ArrayList<>(21);
 
         inputField .setVisible(false);
         inputField.setForeground(super.foreground);
@@ -80,6 +87,8 @@ public class InputField extends DrawableComponent {
         StyleConstants.setBackground((MutableAttributeSet) DEFAULT, background);
         StyleConstants.setFontFamily((MutableAttributeSet) DEFAULT, Font.MONOSPACED);
         StyleConstants.setFontSize((MutableAttributeSet) DEFAULT, 11);
+        INPUT = new SimpleAttributeSet(DEFAULT);
+        StyleConstants.setForeground((MutableAttributeSet) INPUT, outputColorInput);
         OUTPUT = new SimpleAttributeSet(DEFAULT);
         StyleConstants.setForeground((MutableAttributeSet) OUTPUT, outputColorOutput);
         ERROR = new SimpleAttributeSet(DEFAULT);
@@ -145,31 +154,39 @@ public class InputField extends DrawableComponent {
         this.clearOutput = clearOutput;
     }
 
-    void outputLine(String output) {
+    void postLine(String output) {
         try {
             postString(output, DEFAULT);
         } catch (BadLocationException e) {
-            outputException(e);
+            postException(e);
         }
     }
 
-    void outputOutput(String output) {
+    void postInput(String input) {
+        try {
+            postString(input, INPUT);
+        } catch (BadLocationException e) {
+            postException(e);
+        }
+    }
+
+    void postOutput(String output) {
         try {
             postString(output, OUTPUT);
         } catch (BadLocationException e) {
-            outputException(e);
+            postException(e);
         }
     }
 
-    void outputError(String output) {
+    void postError(String output) {
         try {
             postString(output, ERROR);
         } catch (BadLocationException e) {
-            outputException(e);
+            postException(e);
         }
     }
 
-    void outputException(Throwable t) {
+    void postException(Throwable t) {
         try {
             String result;
 
@@ -218,6 +235,9 @@ public class InputField extends DrawableComponent {
         if (hideOutput && !keepField)
             cancel();
         else {
+            this.inputHistory.add(inputField.getText());
+            this.historyIndexOffset = 0;
+            this.currentInput = "";
             this.inputField.setText("");
         }
     }
@@ -225,6 +245,8 @@ public class InputField extends DrawableComponent {
     void cancel() {
         inputField.setText("");
         inputField.setVisible(false);
+        inputHistory.clear();
+        historyIndexOffset = 0;
         outputField.setText("");
         outputField.setVisible(false);
         this.title.setTitle("");
@@ -277,6 +299,25 @@ public class InputField extends DrawableComponent {
         @Override
         public void keyPressed(KeyEvent e) {
             switch (e.getKeyCode()) {
+                case KeyEvent.VK_DOWN:
+                    if (e.getModifiers() == 0 && historyIndexOffset > 0) {
+                        --historyIndexOffset;
+                        if (historyIndexOffset == 0)
+                            inputField.setText(currentInput);
+                        else
+                            inputField.setText(inputHistory.get(inputHistory.size()-historyIndexOffset));
+                        e.consume();
+                    }
+                    break;
+                case KeyEvent.VK_UP:
+                    if (e.getModifiers() == 0 && historyIndexOffset <= inputHistory.size()-1) {
+                        if (historyIndexOffset == 0)
+                            currentInput = inputField.getText();
+                        ++historyIndexOffset;
+                        inputField.setText(inputHistory.get(inputHistory.size()-historyIndexOffset));
+                        e.consume();
+                    }
+                    break;
                 case KeyEvent.VK_ENTER:
                     if (e.getModifiers() == 0) {
                         approve();
@@ -299,6 +340,7 @@ public class InputField extends DrawableComponent {
         private Color background;
 
         private int borderOffset;
+
 
         public TransparentTextArea() {
             super.setBackground(Color.BLACK);
