@@ -19,11 +19,10 @@ public class PlotterController extends JFrame {
      * Constructs a new <code>PlotterController</code>, that itself creates
      * a new {@link FunctionPlotter}.
      */
-    public PlotterController() {
+    public PlotterController(int pxX, int pxY) {
         super("PolyPlot");
-        int px = 600;
 
-        this.setSize(px, px);
+        this.setSize(pxX, pxY);
 
         this.add(new FunctionPlotter());
 

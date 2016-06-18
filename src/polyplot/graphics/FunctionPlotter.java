@@ -140,6 +140,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
         updateSpans();
         updatePow();
+        debug.updateFuncConstCount();
     }
 
     double getValueXPerPixel() {
@@ -446,8 +447,8 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_P, 0), "toggleDrawPoints");
-        action.put("toggleDrawPoints", new AbstractAction() {
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "toggleDrawingMethod");
+        action.put("toggleDrawingMethod", new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -474,7 +475,7 @@ public class FunctionPlotter extends JPanel implements Observer {
             }
         };
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "addFunctionConstant");
-        action.put("addFunction", new AbstractAction() {
+        action.put("addFunctionConstant", new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -484,7 +485,7 @@ public class FunctionPlotter extends JPanel implements Observer {
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.SHIFT_DOWN_MASK), "addFunctionConstantKeep");
-        action.put("addFunctionKeep", new AbstractAction() {
+        action.put("addFunctionConstantKeep", new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -586,7 +587,7 @@ public class FunctionPlotter extends JPanel implements Observer {
                             's', 't', 'u', 'v', 'w', 'x',
                             'y', 'z'
                     };
-            StringBuilder name = new StringBuilder("c");
+            StringBuilder name = new StringBuilder("b");
             for (String con : constants)
                 if (con.contains("="))
                     result.append(" ").append(con).append(";");
@@ -603,7 +604,7 @@ public class FunctionPlotter extends JPanel implements Observer {
                                     name.append('a');
                             break;
                         }
-                    } while (context.hasFunction(name.toString()) ||
+                    } while (context.hasConstant(name.toString()) ||
                             constantNames.contains(name.toString()));
                     // Found a name.
                     result.append(" ").append(name).append(" = ").append(con).append(";");
@@ -683,11 +684,6 @@ public class FunctionPlotter extends JPanel implements Observer {
                 js.put("__internal_fp", FunctionPlotter.this);
 
                 try {
-            //        js.eval("function hack(obj, field) {" +
-            //                "var field = obj.getClass().getDeclaredField(field);" +
-            //                "field.setAccessible(true);" +
-            //                "return field;" +
-            //               "}");
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(
                             FunctionPlotter.class.getResourceAsStream("scripts/debug.js")))) {
                         StringBuilder result = new StringBuilder(420);
@@ -924,6 +920,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     @Override
     public void update(Observable o, Object arg) {
         functions.clear();
+        debug.updateFuncConstCount();
         compiler.getContext().getFunctions(true).forEach(f -> {
             if (f instanceof PureFunction) {
                 final Color tmp;
@@ -938,8 +935,18 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private class DebugGUI extends DrawableComponent {
 
+        private int functions;
+        private int functionsUser;
+
+        private int constants;
+        private int constantsUser;
+
         DebugGUI(Color foreground, Color background, boolean hidden) {
             super(foreground, background, hidden);
+            this.functions     = 0;
+            this.functionsUser = 0;
+            this.constants     = 0;
+            this.constantsUser = 0;
         }
 
         @Override
@@ -949,21 +956,24 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             String[] info = {
                     "DEBUG INFO:",
-                    "program_version   = " + PolyPlot.VERSION,
-                    "span_base         = " + spanBase,
-                    "span              = " + span,
-                    "span_x            = " + spanX,
-                    "span_y            = " + spanY,
-                    "x_corner          = " + xCorner,
-                    "y_corner          = " + yCorner,
-                    "value_per_x_pixel = " + getValueXPerPixel(),
-                    "value_per_y_pixel = " + getValueYPerPixel(),
-                    "zoom              = " + zoom,
-                    "zoom_base         = " + zoomBase,
-                    "power             = " + pow,
-                    "resolution        = " + getWidth()+"x"+getHeight(),
-                    "theme             = " + o.theme,
-                    "render_time       = " + renderTime + "ns",
+                    "program_version        = " + PolyPlot.VERSION,
+                    "span_base              = " + spanBase,
+                    "span                   = " + span,
+                    "span_x                 = " + spanX,
+                    "span_y                 = " + spanY,
+                    "x_corner               = " + xCorner,
+                    "y_corner               = " + yCorner,
+                    "value_per_x_pixel      = " + getValueXPerPixel(),
+                    "value_per_y_pixel      = " + getValueYPerPixel(),
+                    "function_render_method = " + DrawableFunction.DRAWING_METHOD,
+                    "defined_functions      = " + functions + " (" + functionsUser + ")",
+                    "defined_constants      = " + constants + " (" + constantsUser + ")",
+                    "zoom                   = " + zoom,
+                    "zoom_base              = " + zoomBase,
+                    "power                  = " + pow,
+                    "resolution             = " + getWidth()+"x"+getHeight(),
+                    "theme                  = " + o.theme,
+                    "render_time            = " + renderTime + "ns",
             };
             Font f = gc.getFont();
             gc.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
@@ -991,6 +1001,15 @@ public class FunctionPlotter extends JPanel implements Observer {
             }
 
             gc.setFont(f);
+        }
+
+        void updateFuncConstCount() {
+            CompilationContext context = compiler.getContext();
+
+            functions     = context.getFunctions(false).size();
+            functionsUser = context.getFunctions(true).size();
+            constants     = context.getConstants(false).size();
+            constantsUser = context.getConstants(true).size();
         }
     }
 }

@@ -5,7 +5,6 @@
 graphics.cheat-sheet.background=b8
 graphics.cheat-sheet.foreground=ff
 graphics.color.background=f8f8f8
-graphics.debug.foreground=e0
 graphics.function-overview.background=a0
 graphics.function-overview.foreground=ff
 graphics.functions.colors=[ab4642, dc9656, f7ca88, a1b56c, 86c1b9, 7cafc2, ba8baf, a16946]
