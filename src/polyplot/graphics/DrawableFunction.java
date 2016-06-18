@@ -34,7 +34,9 @@ public class DrawableFunction extends DrawableComponent {
     private double lastXCorner = NaN;
     private double lastYCorner = NaN;
 
-    static boolean DRAW_POINTS = false;
+    public enum DrawingMethod { PATH, POINTS, LINES }
+
+    static DrawingMethod DRAWING_METHOD = DrawingMethod.PATH;
 
     private BufferedImage pixelBuffer;
 
@@ -52,49 +54,67 @@ public class DrawableFunction extends DrawableComponent {
         return function;
     }
 
+    public static void toggleDrawingMethod() {
+        DRAWING_METHOD = DrawingMethod.values()[(DRAWING_METHOD.ordinal() + 1) % DrawingMethod.values().length];
+    }
+
     @Override
     public void draw(Graphics g, FunctionPlotter parent) {
         if (this.hidden) return;
-        g.setColor(this.foreground);
-        //((Graphics2D)g).setStroke(STROKE);
+        final Graphics2D g2d = (Graphics2D) g;
         final int tmpWidth = parent.getWidth();
         final int tmpHeight = parent.getHeight();
         final double tmpXCorner = parent.getXCorner();
         final double tmpYCorner = parent.getYCorner();
         if (tmpWidth == this.lastWidth && tmpXCorner == this.lastXCorner && tmpYCorner == this.lastYCorner
-                && tmpHeight == this.lastHeight) {
-            if (DRAW_POINTS) {
-                this.drawPoints(g, parent, true);
-                return;
-            }
-            else if (this.pixelBuffer == null) {
-                ((Graphics2D) g).draw(this.path);
-                return;
-            }
+                && tmpHeight == this.lastHeight && this.pixelBuffer != null) {
+            g2d.drawImage(this.pixelBuffer, null, null);
         }
         this.lastWidth = tmpWidth;
         this.lastXCorner = tmpXCorner;
         this.lastYCorner = tmpYCorner;
         this.lastHeight = tmpHeight;
 
-        if (DRAW_POINTS) {
-            this.drawPoints(g, parent, false);
-            return;
+        this.pixelBuffer = new BufferedImage(this.lastWidth, this.lastHeight, BufferedImage.TYPE_INT_ARGB);
+        try {
+            final Graphics2D tmpG2d = pixelBuffer.createGraphics();
+            tmpG2d.setColor(this.foreground);
+            tmpG2d.setRenderingHints(FunctionPlotter.RENDERING_HINTS);
+            switch (DRAWING_METHOD) {
+                case PATH: this.drawPath(tmpG2d, parent); break;
+                case POINTS: this.drawPoints(tmpG2d, parent); break;
+                case LINES: this.drawLines(tmpG2d, parent); break;
+            }
+        } catch (RuntimeException e) {
+            g.drawString(e.toString(), 42, 42);
+            System.err.println(e.toString());
         }
+        g2d.drawImage(this.pixelBuffer, null, null);
+    }
 
-        this.pixelBuffer = null;
-
+    public void drawPath(Graphics2D g, FunctionPlotter parent) {
         this.path.reset();
         boolean lastWasNaN = true;
         for (int i = -1, width = parent.getWidth(); i < width; ++i) {
             final double y = this.function.fastOf(parent.getValueOfXPixel(i));
             if (y == y) { // when y = NaN this is false
-                if (lastWasNaN) this.path.moveTo(i, parent.getPixelToYValue(y));
-                else this.path.lineTo(i, parent.getPixelToYValue(y));
+                final int yPixel, xPixel;
+                if (y == Double.POSITIVE_INFINITY) {
+                    xPixel = i - 1;
+                    yPixel = -1;
+                } else if (y == Double.NEGATIVE_INFINITY) {
+                    xPixel = i - 1;
+                    yPixel = this.lastHeight;
+                } else {
+                    xPixel = i;
+                    yPixel = parent.getPixelToYValue(y);
+                }
+                if (lastWasNaN) this.path.moveTo(xPixel, yPixel);
+                else this.path.lineTo(xPixel, yPixel);
                 lastWasNaN = false;
             } else lastWasNaN = true;
         }
-        ((Graphics2D) g).draw(this.path);
+        g.draw(this.path);
     }
 
     private int diff(int i1, int i2) {
@@ -102,48 +122,41 @@ public class DrawableFunction extends DrawableComponent {
         else return i1 - i2;
     }
 
-    void drawPoints(Graphics g, FunctionPlotter parent, boolean drawBuffer) {
-        final Graphics2D g2d = (Graphics2D)g;
-
-        if (drawBuffer && this.pixelBuffer != null) {
-            g2d.drawImage(this.pixelBuffer, null, null);
-            return;
-        }
-
-        this.pixelBuffer = new BufferedImage(this.lastWidth, this.lastHeight, BufferedImage.TYPE_INT_ARGB);
-
-        final int rgb = this.foreground.getRGB();
-        final Graphics2D tmpGraphics = this.pixelBuffer.createGraphics();
-        tmpGraphics.setColor(this.foreground);
-
+    void drawPoints(Graphics2D g, FunctionPlotter parent) {
         for (int i = 0; i < this.lastWidth; ++i) {
             final double y = this.function.fastOf(parent.getValueOfXPixel(i));
             final int yPixel = parent.getPixelToYValue(y);
 
             if (y == y && yPixel >= 0 && yPixel < this.lastHeight) {
                 //this.pixelBuffer.setRGB(i, yPixel, rgb);
-                tmpGraphics.drawRect(i, yPixel, 1, 1);
+                g.drawRect(i, yPixel, 1, 1);
             }
         }
-
-        g2d.drawImage(this.pixelBuffer, null, null);
     }
 
-    void drawLines(Graphics g, FunctionPlotter parent) {
+    void drawLines(Graphics2D g, FunctionPlotter parent) {
         if (this.hidden) return;
         g.setColor(this.foreground);
+        final int OFFSET = this.lastHeight + 42_000;
+        final int NEG_OFFSET = -42_000;
         //((Graphics2D)g).setStroke(STROKE);
-        double y, lastY = this.function.fastOf(parent.getValueOfXPixel(-1));
-        int lastXPixel = -1;
+        int lastYPixel;
+        {
+            final double tmpY = this.function.fastOf(parent.getValueOfXPixel(-1));
+            if (tmpY == tmpY) lastYPixel = parent.getPixelToYValue(tmpY);
+            else lastYPixel = Integer.MAX_VALUE;
+        }
         for (int i = 0; i < parent.getWidth(); ++i) {
-            y = this.function.fastOf(parent.getValueOfXPixel(i));
-
-            if (y == y && lastY == lastY)
-                g.drawLine(lastXPixel, parent.getPixelToYValue(lastY),
-                        i, parent.getPixelToYValue(y));
-
-            if (lastXPixel != i) lastY = y;
-            lastXPixel = i;
+            final double y = this.function.fastOf(parent.getValueOfXPixel(i));
+            int yPixel = Integer.MAX_VALUE;
+            if (y == y) {
+                yPixel = parent.getPixelToYValue(y);
+                // of one of the points is visible
+                if ((yPixel > NEG_OFFSET && yPixel < OFFSET) || (lastYPixel > NEG_OFFSET && lastYPixel < OFFSET)) {
+                    g.drawLine(i - 1, lastYPixel, i, yPixel);
+                }
+            }
+            lastYPixel = yPixel;
         }
     }
 }

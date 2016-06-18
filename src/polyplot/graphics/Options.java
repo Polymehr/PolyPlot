@@ -102,9 +102,9 @@ enum Options {
     private static final String SCALE_STRETCH_DEFAULT = "false";
     boolean scaleStretch;
 
-    private static final String FKT_POINT = "graphics.functions.point-rendering";
-    private static final String FKT_POINT_DEFAULT = "false";
-    boolean functionsPointRendering;
+    private static final String FUNCTION_RENDERING = "graphics.functions.rendering-method";
+    private static final String FUNCTION_RENDERING_DEFAULT = "LINES";
+    DrawableFunction.DrawingMethod functionsPointRendering;
 
     private static final String ZOOM_BASE = "graphics.zoom-base";
     private static final String ZOOM_BASE_DEFAULT = "1.05";
@@ -128,7 +128,7 @@ enum Options {
         defaults.put(SCALE_STRETCH, SCALE_STRETCH_DEFAULT);
 
         defaults.put(FKT_COLORS, FKT_COLORS_DEFAULT);
-        defaults.put(FKT_POINT, FKT_POINT_DEFAULT);
+        defaults.put(FUNCTION_RENDERING, FUNCTION_RENDERING_DEFAULT);
 
         defaults.put(BOX_BG, BOX_BG_DEFAULT);
         defaults.put(BOX_FG, BOX_FG_DEFAULT);
@@ -362,7 +362,12 @@ enum Options {
             this.functionOverviewShowHidden = getBoolValue(OV_SHOW_HIDDEN);
             this.functionOverviewHidden = getBoolValue(OV_HIDE);
 
-            this.functionsPointRendering = getBoolValue(FKT_POINT);
+            try {
+                this.functionsPointRendering = DrawableFunction.DrawingMethod.valueOf(
+                        this.options.getProperty(FUNCTION_RENDERING));
+            } catch (IllegalArgumentException e) {
+                this.functionsPointRendering = DrawableFunction.DrawingMethod.valueOf(FUNCTION_RENDERING_DEFAULT);
+            }
 
         }
 
