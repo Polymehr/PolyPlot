@@ -10,7 +10,7 @@ import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
 
-import static java.lang.Double.NaN;
+import static java.lang.Double.*;
 
 /**
  * A component that represents a function that can be drawn
@@ -48,7 +48,9 @@ public class DrawableFunction extends DrawableComponent {
     }
 
     boolean intersectsWith(Point p, int radius, FunctionPlotter parent) {
-        return diff(parent.getPixelToYValue(this.function.of(p.x)), p.y) < radius;
+        double yVal = this.function.of(parent.getValueOfXPixel(p.x));
+        if (yVal != yVal || yVal == POSITIVE_INFINITY || yVal == NEGATIVE_INFINITY) return false;
+        else return diff(parent.getPixelToYValue(yVal), p.y) < radius;
     }
 
     public PureFunction getFunction() {

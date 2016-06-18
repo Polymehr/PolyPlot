@@ -27,13 +27,12 @@ enum Options {
     private static final String BG = "graphics.color.background";
     private static final String BG_DEFAULT = "FFFFFFFF";
     Color backgroundColor;
-    private String backgroundString;
     private static final String SCALE_COLOR = "graphics.scale.color";
     private static final String SCALE_COLOR_DEFAULT = "000000FF";
     Color scaleColor;
 
-    private static final String FKT_COLORS = "graphics.functions.colors";
-    private static final String FKT_COLORS_DEFAULT = "[FF0000, 00FF00, 0000FF, FFC800, 00FFFF, FF00FF]";
+    private static final String FUNCTION_COLORS = "graphics.functions.colors";
+    private static final String FUNCTION_COLORS_DEFAULT = "[FF0000, 00FF00, 0000FF, FFC800, 00FFFF, FF00FF]";
     Integer[] functionColors;
 
     private static final String BOX_FG = "graphics.info-box.foreground";
@@ -127,7 +126,7 @@ enum Options {
         defaults.put(SCALE_COLOR, SCALE_COLOR_DEFAULT);
         defaults.put(SCALE_STRETCH, SCALE_STRETCH_DEFAULT);
 
-        defaults.put(FKT_COLORS, FKT_COLORS_DEFAULT);
+        defaults.put(FUNCTION_COLORS, FUNCTION_COLORS_DEFAULT);
         defaults.put(FUNCTION_RENDERING, FUNCTION_RENDERING_DEFAULT);
 
         defaults.put(BOX_BG, BOX_BG_DEFAULT);
@@ -349,8 +348,7 @@ enum Options {
             if (themeFile != null)
                 load(themeFile, true);
 
-            this.zoomBase = getDoubleValue(ZOOM_BASE, d -> d == d && d != 0 &&
-                    d != Double.NEGATIVE_INFINITY && d != Double.POSITIVE_INFINITY);
+            this.zoomBase = getDoubleValue(ZOOM_BASE, d -> d == d && d > 0 && d != Double.POSITIVE_INFINITY);
             this.span = getDoubleValue(SPAN, d -> d == d && d > 0 && d != Double.POSITIVE_INFINITY);
             this.scaleStretch = getBoolValue(SCALE_STRETCH);
 
@@ -371,7 +369,7 @@ enum Options {
 
         }
 
-        this.functionColors = getColorArray(FKT_COLORS);
+        this.functionColors = getColorArray(FUNCTION_COLORS);
 
         this.backgroundColor = getColor(BG, false);
         this.scaleColor = getColor(SCALE_COLOR, true);

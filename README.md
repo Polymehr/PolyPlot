@@ -1,5 +1,7 @@
 # PolyPlot
-A simple two dimensional function plotter in Java
+A simple two dimensional function plotter in Java.
+![PolyPlot] (screenshot.png)
+
 ## Controls
 PolyPlot has specific key combinations that allow you to perform certain actions. 
 If a key in the following list is in parentheses, it means that the press of that 
@@ -9,10 +11,10 @@ will only take effect if that key is pressed.
 #### Movement
 Input                          | Action
 -------------------------------|----------------------------------------------------------
-(Shift + ) ←, H                | Move left 10% of width (or 1px)
-(Shift + ) ↑, J                | Move up 10% of height (or 1px)
-(Shift + ) ↓, K                | Move down 10% of height (or 1px)
-(Shift + ) →, L                | Move right 10% of width (or 1px)
+(Shift + ) ← or H              | Move left 10% of width (or 1px)
+(Shift + ) ↑ or J              | Move up 10% of height (or 1px)
+(Shift + ) ↓ or K              | Move down 10% of height (or 1px)
+(Shift + ) → or L              | Move right 10% of width (or 1px)
 \<Mouse Dragging>              | Move coordinate system
 (Alt + ) Scroll Up/Down        | Move along x-axis in positive/negative direction (1px)
 Shift + (Alt) + Scroll Up/Down | Move along y-axis in positive/negative direction (1px)
@@ -23,8 +25,8 @@ O                              | Center the ordinate origin in the middle of the
 #### Zoom
 Input                          | Action
 -------------------------------|----------------------------------------------------------
-Ctrl + (Shift) + plus          | Zoom in (10x faster)
-Ctrl + (Shift) + minus         | Zoom out (10x faster)
+Ctrl + (Shift) + Plus          | Zoom in (10x faster)
+Ctrl + (Shift) + Minus         | Zoom out (10x faster)
 Ctrl + 0                       | Reset Zoom
 Ctrl + (Shift) + Scroll Up     | Zoom in (10x faster)
 Ctrl + (Shift) + Scroll Down   | Zoom out (10x faster)
@@ -43,7 +45,7 @@ Input                          | Action
 -------------------------------|----------------------------------------------------------
 F1                             | Toggle an internal help panel
 B                              | Toggle the info box
-P                              | Toggle point rendering of functions
+R                              | Toggle rendering method of functions
 D                              | Toggle showing of defined functions and constants
 
 ## Adding functions
@@ -63,6 +65,15 @@ g(x, y, z) = x + y ^ 2 + z ^ 3
 It is possible to define multiple parameters. But every function that has more than one parameter 
 will not be drawn on the coordinate system. To redefine a function just define it again.
 
+By using the `"Add function"` (Key `F`) dialog instead of the `"Add function or constant"` dialog it is
+possible to add a function without specifying a name first.
+```
+sin(x) + cos(-x)
+e ^ x
+```
+**Attention:** If no name is given `x` will always be assumed as variable. To use multiple variables or
+other variable names you still have to use a name.
+
 #### Constants 
 Constants can be defined with the following syntax:
 ``` 
@@ -70,6 +81,13 @@ c = 42
 d = f(42) * 21
 ``` 
 It is also possible to use defined functions with constant arguments in the definition of a constant.
+
+By using the `"Add constant"` (Key `C`) dialog instead of the `"Add function or constant"` dialog it is
+possible also to add a constant without specifying a name first.
+```
+15 + 9.3
+f(17) / 29.58
+```
 
 ### Pre-defined functions and constants
 The following functions are already defined and can be used in expressions:
@@ -107,3 +125,89 @@ The following constants are already defined and can be used in expressions:
  * e
 
 (All functions and constants are taken from `java.lang.Math`.)
+
+## Options and Themes
+### Options
+PolyPlot searches for the file `options.conf` in the directory of the PolyPlot jar file.
+
+Option key                               | Default value | Description
+-----------------------------------------|:-------------:|-----------------------------------------------------------------------------------------------------------
+`graphics.function-overview.hide`        | `true`        | Hide the function overview on startup.
+`graphics.function-overview.show-hidden` | `false`       | Also show hidden functions in function overview.
+`graphics.functions.rendering-method`    | `LINES`       | Startup rendering method of functions.<br> Valid values: `LINES`, `PATH`, `POINTS`
+`graphics.info-box.docked`               | `true`        | Dock info box to corners or  to mouse cursor.
+`graphics.info-box.function-radius`      | `20`          | Show values of functions around mouse cursor.<br> `-1`: All, `0`: No, else only functions inside `radius`
+`graphics.info-box.hide`                 | `true`        | Hide the info box on startup.
+`graphics.info-box.show-pixels`          | `false`       | Show y and y pixel values in info box.
+`graphics.scale.stretch`                 | `false`       | Stretch longer section of scale instead of adjusting its span.
+`graphics.span`                          | `20.0`        | The span of the shorter section of the scale at default zoom.
+`graphics.theme`                         | `default`     | The selected theme. See _Theme Section_.
+`graphics.zoom-base`                     | `1.05`        | The base of the zoom. Determines the zoom factor.
+
+### Themes
+According to the `graphics.theme` option PolyPlot will search for a matching file in the
+`./themes/` directory. If the value of the option does not have a file extension `.theme`
+will be assumed.<br>
+Values defined in a theme file will be overridden by values defined in the options file.
+
+#### Colors
+Colors are defined in hexadecimal like in HTML and can be up to 4 bytes (8 characters) long. The bytes 
+represent the `red`, `green`, `blue` and `alpha` value of the color in that order.
+
+There are two special color values: `graphics.color.background` witch is the reference background 
+(transparency will be ignored) and `graphics.scale.color` witch serves a reference foreground.
+For these special values it is mandatory to specify all `rgb` values. If zeros are missing they will
+be filled out. (`FF` -> `0000FF`)
+
+All other color values support only partial definition. The not defined parts will be generated from
+the respective reference color.
+
+Character length | Meaning
+:---------------:|--------------------------------------------------------------
+`0`              | The full reference color will be used.
+`1`-`2`          | The value will be used as alpha value on the reference.
+`3`-`6`          | The value will be used as `rgb` with an opaque `alpha` value.
+`7`-`8`          | The value will be used as `rgba`.
+_other_          | The value is invalid.
+
+All theme keys matching `*.background` use `graphics.color.background` as reference and, respectively,
+all theme keys matching `*.foreground` use `graphics.scale.color` as reference.<br>
+Additionally all theme keys of `graphics.input.output` also use `graphics.scale.color` as reference.
+
+Theme key                               | Default value
+----------------------------------------|:------------:
+`graphics.cheat-sheet.background`       | `b8`
+`graphics.cheat-sheet.foreground`       | `ff`
+`graphics.color.background`             | `ffffffff`
+`graphics.function-overview.background` | `a0`
+`graphics.function-overview.foreground` | `ff`
+`graphics.info-box.foreground`          | `ff`
+`graphics.input.background`             | `7f`
+`graphics.input.foreground`             | `ff`
+`graphics.input.output-color.default`   | `ff`
+`graphics.input.output-color.error`     | `990000`
+`graphics.input.output-color.input`     | `3f3f3f`
+`graphics.input.output-color.output`    | `4f4f4f`
+`graphics.scale.color`                  | `000000ff`
+
+#### Function Colors
+The theme key `graphics.functions.colors` requires a specific syntax.
+The list must be opened with a opening bracket (`[`) and closed with a closing bracket (`]`). 
+The values in between are separated by commata (`,`). Values have the same limitations as
+base colors because they do not support transparency and and missing zeros will be filled with
+out.<br>
+**Attention:** if one color in the list is invalid (no or more than 8 characters) or the list is
+empty, it will be regarded invalid and replaced by the default value.
+
+#### Generating Themes
+Own themes for PolyPlot can be generated by using the provided templates in `./themes/templates/poly-plot`. 
+These templates are written for [Chriskempson's Base16-builder](https://github.com/chriskempson/base16-builder).
+See their GitHib page for details.
+
+## Command Line Options
+The following command line options are supported:
+
+ Short | Long     | Arguments | Description
+-------|----------|-----------|-----------------------------------------------------
+`-s`   | `--size` | `X:Y`     | Set size of the window. `X` and `Y` must be positive
+`-h`   | `--help` |           | Display help and exit

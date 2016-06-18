@@ -8,8 +8,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * A component that represents a box that shows
@@ -62,18 +61,10 @@ public class InfoBox extends DrawableComponent {
 
         components.add(xString);
         components.add(yString);
-        switch (functionRadius) {
-            case 0:
-                break;
-            case -1:
-                for (DrawableFunction f : parent.getFunctions())
+        if (functionRadius != 0)
+            for (DrawableFunction f : parent.getFunctions())
+                if (functionRadius == -1 || f.intersectsWith(mouse, functionRadius, parent))
                     components.add(getFunctionString(f.getFunction(), mouse.x, parent));
-                break;
-            default:
-                for (DrawableFunction f : parent.getFunctions())
-                    if (f.intersectsWith(mouse, functionRadius, parent))
-                        components.add(getFunctionString(f.getFunction(), mouse.x, parent));
-        }
 
 
         for (String s : components) {
@@ -97,25 +88,27 @@ public class InfoBox extends DrawableComponent {
         gc.drawString(yString, pos.x + 3, pos.y - 1 + height * 2);
 
 
-        switch (functionRadius) {
-            case 0:
-                break;
-            case -1: {
-                int yPos = pos.y - 1 + height * 2;
-                for (DrawableFunction f : parent.getFunctions()) {
-                    gc.setColor(f.getForegroundColor());
-                    gc.drawString(getFunctionString(f.getFunction(), mouse.x, parent), pos.x + 3, yPos += height);
+        if (functionRadius != 0) {
+            int yPos = pos.y - 1 + height * 2;
+            List<String> functions = new LinkedList<>();
+            Map<String, Color> colors = new HashMap<>();
+            for (DrawableFunction df : parent.getFunctions())
+                if (functionRadius == -1 || df.intersectsWith(mouse, functionRadius, parent)) {
+                    String str = getFunctionString(df.getFunction(), mouse.x, parent);
+                    functions.add(str);
+                    colors.put(str, df.getForegroundColor());
                 }
-            }
-            break;
+            Collections.sort(functions, (c1, c2) -> {
+                String s1 = c1.substring(0, c1.indexOf('('));
+                String s2 = c2.substring(0, c2.indexOf('('));
+                if (s1.length() == s2.length()) return s1.compareTo(s2);
+                else return s1.length() - s2.length();
+            });
 
-            default:
-                int yPos = pos.y - 1 + height * 2;
-                for (DrawableFunction f : parent.getFunctions())
-                    if (f.intersectsWith(mouse, functionRadius, parent)) {
-                        gc.setColor(f.getForegroundColor());
-                        gc.drawString(getFunctionString(f.getFunction(), mouse.x, parent), pos.x + 3, yPos += height);
-                    }
+            for (String key : functions) {
+                gc.setColor(colors.get(key));
+                gc.drawString(key, pos.x + 3, yPos += height);
+            }
         }
 
     }

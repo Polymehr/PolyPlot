@@ -60,7 +60,7 @@ public class CheatSheet extends DrawableComponent {
             "View:",
                 "F1", "Toggle the Cheat Sheet",
                 "B", "Toggle the info box",
-                "P", "Toggle point rendering of functions",
+                "R", "Toggle rendering method of functions",
                 "D", "Toggle showing of defined functions and constants"
         };
 
