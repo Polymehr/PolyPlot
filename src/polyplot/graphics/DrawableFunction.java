@@ -125,9 +125,10 @@ public class DrawableFunction extends DrawableComponent {
     void drawPoints(Graphics2D g, FunctionPlotter parent) {
         for (int i = 0; i < this.lastWidth; ++i) {
             final double y = this.function.fastOf(parent.getValueOfXPixel(i));
+            if (y != y) continue;
             final int yPixel = parent.getPixelToYValue(y);
 
-            if (y == y && yPixel >= 0 && yPixel < this.lastHeight) {
+            if (yPixel >= 0 && yPixel < this.lastHeight) {
                 //this.pixelBuffer.setRGB(i, yPixel, rgb);
                 g.drawRect(i, yPixel, 1, 1);
             }
