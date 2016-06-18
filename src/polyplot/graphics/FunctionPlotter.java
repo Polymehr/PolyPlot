@@ -30,6 +30,15 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private static final long serialVersionUID = 1L;
 
+    static final RenderingHints RENDERING_HINTS;
+    static {
+        RENDERING_HINTS = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        RENDERING_HINTS.put(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+        RENDERING_HINTS.put(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        RENDERING_HINTS.put(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR);
+        RENDERING_HINTS.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+    }
+
     private long renderTime;
 
     private List<DrawableComponent> underlayComponents;
@@ -95,7 +104,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         registerKeyBindings();
         registerMouseListener();
 
-        DrawableFunction.DRAW_POINTS = o.functionsPointRendering;
+        DrawableFunction.DRAWING_METHOD = o.functionsPointRendering;
 
         underlayComponents = new LinkedList<>();
         overlayComponents = new LinkedList<>();
@@ -150,7 +159,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     }
 
     int getPixelToYValue(double value) {
-        if (value == Double.NaN)
+        if (value != value)
             throw new IllegalArgumentException("Value has to be a real number! " + value);
         return (int) (getHeight() - (value / getValueYPerPixel() - yCorner / getValueYPerPixel()) - 1);
     }
@@ -250,12 +259,7 @@ public class FunctionPlotter extends JPanel implements Observer {
     @Override
     public void paintComponent(Graphics g) {
         final Graphics2D g2d = (Graphics2D)g;
-        g2d.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
-        g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR);
-        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2d.setRenderingHints(RENDERING_HINTS);
         if (this.getWidth() != lastWidth && this.getHeight() != lastHeight) {
             lastWidth  = this.getWidth();
             lastHeight = this.getHeight();
@@ -448,7 +452,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                DrawableFunction.DRAW_POINTS = !DrawableFunction.DRAW_POINTS;
+                DrawableFunction.toggleDrawingMethod();
                 repaint();
             }
         });

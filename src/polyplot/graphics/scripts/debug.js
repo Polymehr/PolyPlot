@@ -6,17 +6,13 @@ function hack(obj) {
         var field = fields[i];
         field.setAccessible(true); 
         Object.defineProperty(result, field.getName(), {
-            get: createGetter(obj, fields, i),
-            set: createSetter(obj, fields, i)
+            get: function(obj, field) {
+                return function() { return field.get(obj); };
+            }(obj, field),
+            set: function(obj, field) {
+                return function(value) { field.set(obj, value); };
+            }(obj, field)
         });
     }
     return result; 
-}
-
-function createGetter(obj, fields, i) {
-    return function() { return fields[i].get(obj);}
-}
-
-function createSetter(obj, fields, i) {
-    return function(value) { return fields[i].set(obj, value);}
 }
