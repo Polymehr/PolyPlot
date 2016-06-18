@@ -39,6 +39,7 @@ public class DrawableFunction extends DrawableComponent {
     static DrawingMethod DRAWING_METHOD = DrawingMethod.PATH;
 
     private BufferedImage pixelBuffer;
+    private final static Color TRANSPARENT = new Color(0, true);
 
     DrawableFunction(Color color, PureFunction function) {
         super(color);
@@ -75,7 +76,15 @@ public class DrawableFunction extends DrawableComponent {
         this.lastYCorner = tmpYCorner;
         this.lastHeight = tmpHeight;
 
-        this.pixelBuffer = new BufferedImage(this.lastWidth, this.lastHeight, BufferedImage.TYPE_INT_ARGB);
+        if (this.pixelBuffer != null && this.pixelBuffer.getWidth() == this.lastWidth
+                && this.pixelBuffer.getHeight() == this.lastHeight) {
+            final Graphics2D tmp = this.pixelBuffer.createGraphics();
+            tmp.setBackground(TRANSPARENT);
+            tmp.clearRect(0, 0, this.lastWidth, this.lastHeight);
+        } else {
+            this.pixelBuffer = new BufferedImage(this.lastWidth, this.lastHeight, BufferedImage.TYPE_INT_ARGB);
+        }
+
         try {
             final Graphics2D tmpG2d = pixelBuffer.createGraphics();
             tmpG2d.setColor(this.foreground);
