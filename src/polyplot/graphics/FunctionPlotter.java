@@ -78,7 +78,6 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     FunctionPlotter() {
         o = Options.INSTANCE;
-        o.load();
 
         this.setLayout(new BorderLayout());
         super.setFocusable(true);
