@@ -301,7 +301,8 @@ public class CompilationContext extends Observable {
      */
     void removeFunctionIfPresent(String name) {
         Function tmp = this.functions.remove(name.toLowerCase());
-        if (!tmp.isUserDefined()) throw new IllegalStateException("trying to remove non-user-defined function");
+        if (tmp != null && !tmp.isUserDefined())
+            throw new IllegalStateException("trying to remove non-user-defined function");
         this.functionCacheInvalid = true;
         // no need to notify observers, because this method is only called if the compiler is doing a recompile
         // (and thus all the functions will be added again later again (possibly with a different implementation))
@@ -315,10 +316,19 @@ public class CompilationContext extends Observable {
      * @param name the constant's name
      */
     void removeConstantIfPresent(String name) {
-        this.constants.remove(name.toLowerCase());
+        Constant tmp = this.constants.remove(name.toLowerCase());
+        if (tmp != null && !tmp.isUserDefined())
+            throw new IllegalStateException("trying to remove non-user-defined function");
         this.constantCacheInvalid = true;
         // no need to notify observers, because this method is only called if the compiler is doing a recompile
         // (and thus all the constants will be added again later again (possibly with a different value))
         // which will notify the observers
+    }
+
+    void changed() {
+        this.functionCacheInvalid = true;
+        this.constantCacheInvalid = true;
+        this.setChanged();
+        this.notifyObservers();
     }
 }

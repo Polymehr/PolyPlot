@@ -873,14 +873,36 @@ public final class Compiler {
     }
 
     private void recompileUserDefined() {
+        final List<String> errors = new LinkedList<>();
         for (CompilationContext.Constant constant : this.context.getConstants(true)) {
             this.context.removeConstantIfPresent(constant.getName());
             if (constant.getFullExpression() != null)
+            try {
                 this.definition(constant.getFullExpression());
+                // the only case in which this can happen is if the user assigns a constant to itself
+                // the function will be deleted and there will be an error when the constant is recompiled
+                // the exception will be the same every time
+                // it has to be caught so other usages of the function are found and deleted in this loop
+            } catch (IllegalStateException e) {
+                this.context.changed();
+                errors.add(e.getMessage());
+            }
         }
+
         for (Function f : this.context.getFunctions(true)) {
             this.context.removeFunctionIfPresent(f.getName());
-            this.definition(f.getFullExpression());
+            try {
+                this.definition(f.getFullExpression());
+            // the only case in which this can happen is if the user assigns a function to itself
+            // the function will be deleted and there will be an error when the function is recompiled
+            // the exception will be the same every time
+            // it has to be caught so other usages of the function are found and deleted in this loop
+            } catch (IllegalStateException e) {
+                this.context.changed();
+                errors.add(e.getMessage());
+            }
+
         }
+        if (!errors.isEmpty()) throw new IllegalStateException(String.join("\n", errors));
     }
 }
