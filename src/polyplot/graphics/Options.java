@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  * Options of the function plotter.<br>
  * Variables should be self-explaining.
  */
-enum Options {
+public enum Options {
 
     INSTANCE;
 
@@ -324,28 +324,53 @@ enum Options {
         }
     }
 
-
-
+    /**
+     * Loads the options from the option file.
+     */
     public void load() {
         load(Paths.get(FILE_NAME), false);
     }
 
+    /**
+     * Sets an options. The correctness of the
+     * value will not be checked.
+     *
+     * @param key
+     *      the key of the option.
+     * @param value
+     *      the value of the option.
+     */
+    public void set(String key, String value) {
+        if (defaults.containsKey(key))
+            options.setProperty(key, value);
+        else
+            System.err.println("[ERROR/Options]: The specified key (" + key + ") does not exist!");
+    }
+
+    /**
+     * Reloads the internal fields of the options.
+     */
+    public void reload() {
+        load(null, false);
+    }
+
     private void load(Path file, boolean theme) {
-        try {
-            options.load(Files.newBufferedReader(file));
-        } catch (NoSuchFileException e) {
-            System.out.println("[INFO/Options]: No " + (theme ? "Theme" : "Options") + " file (\"" + file +"\") found" +
-                    ".");
-            if (theme) return;
-        } catch (IOException e) {
-            e.printStackTrace();
-            if (theme) return;
-        }
+        if (file != null)
+            try {
+                options.load(Files.newBufferedReader(file));
+            } catch (NoSuchFileException e) {
+                System.out.println("[INFO/Options]: No " + (theme ? "Theme" : "Options") + " file (\"" + file +"\") found" +
+                        ".");
+                if (theme) return;
+            } catch (IOException e) {
+                e.printStackTrace();
+                if (theme) return;
+            }
 
         if (!theme) {
 
             Path themeFile = getTheme();
-            if (themeFile != null)
+            if (themeFile != null && file != null)
                 load(themeFile, true);
 
             this.zoomBase = getDoubleValue(ZOOM_BASE, d -> d == d && d > 0 && d != Double.POSITIVE_INFINITY);
@@ -367,6 +392,20 @@ enum Options {
                 this.functionsPointRendering = DrawableFunction.DrawingMethod.valueOf(FUNCTION_RENDERING_DEFAULT);
             }
 
+        } else {
+            // Prevent the loading of non-theme options set in theme files on reload.
+            // I know, it's cheaty.
+            options.put(SCALE_STRETCH, SCALE_STRETCH_DEFAULT);
+            options.put(FUNCTION_RENDERING, FUNCTION_RENDERING_DEFAULT);
+            options.put(BOX_DOCKED, BOX_DOCKED_DEFAULT);
+            options.put(BOX_PIXELS, BOX_PIXELS_DEFAULT);
+            options.put(BOX_RADIUS, BOX_RADIUS_DEFAULT);
+            options.put(BOX_HIDE, BOX_HIDE_DEFAULT);
+            options.put(OV_SHOW_HIDDEN, OV_SHOW_HIDDEN_DEFAULT);
+            options.put(OV_HIDE, OV_HIDE_DEFAULT);
+            options.put(ZOOM_BASE, ZOOM_BASE_DEFAULT);
+            options.put(SPAN, SPAN_DEFAULT);
+            options.put(THEME, THEME_DEFAULT);
         }
 
         this.functionColors = getColorArray(FUNCTION_COLORS);

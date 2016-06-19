@@ -207,7 +207,9 @@ See their GitHib page for details.
 ## Command Line Options
 The following command line options are supported:
 
- Short | Long     | Arguments | Description
--------|----------|-----------|-----------------------------------------------------
-`-s`   | `--size` | `X:Y`     | Set size of the window. `X` and `Y` must be positive
-`-h`   | `--help` |           | Display help and exit
+ Short | Long        | Arguments     | Description
+-------|-------------|---------------|-----------------------------------------------------
+`-s`   | `--size`    | `X:Y`         | Set size of the window. `X` and `Y` must be positive
+`-o`   | `--options` | `[OPTION]...` | Set overwriting options in `KEY=VALUE` format
+`-h`   | `--help`    |               | Display help and exit
+
