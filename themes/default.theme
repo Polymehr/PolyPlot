@@ -6,6 +6,7 @@ graphics.color.background=ffffffff
 graphics.function-overview.background=a0
 graphics.function-overview.foreground=ff
 graphics.functions.colors=[ff0000, 00ff00, 0000ff, ffc800, 00ffff, ff00ff]
+graphics.info-box.background=50
 graphics.info-box.foreground=ff
 graphics.input.background=7f
 graphics.input.foreground=ff
