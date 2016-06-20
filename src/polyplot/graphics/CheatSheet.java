@@ -38,7 +38,7 @@ public class CheatSheet extends DrawableComponent {
                 "0", "Center the y-axis in the middle of the window",
                 "G", "Center the x-axis in the middle of the window",
                 "O", "Center the ordinate origin in the middle of the window",
-                "",
+                "", "",
                 "Shift + G", "Move function"
         };
         final String[] zoom = {
