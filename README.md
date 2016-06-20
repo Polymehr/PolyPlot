@@ -21,6 +21,7 @@ Shift + (Alt) + Scroll Up/Down | Move along y-axis in positive/negative directio
 0                              | Center the y-axis in the middle of the window
 G                              | Center the x-axis in the middle of the window
 O                              | Center the ordinate origin in the middle of the window
+Shift + G                      | Move function
 
 #### Zoom
 Input                          | Action
@@ -38,8 +39,7 @@ Input                          | Action
 (Shift + ) F                   | Add a function, nameless possible (and keep prompt open)
 (Shift + ) C                   | Add a constant, nameless possible (and keep prompt open)
 E                              | Evaluate expression
-ESC                            | Close input field
-
+ESC                            | Exit to normal mode
 #### View
 Input                          | Action
 -------------------------------|----------------------------------------------------------
@@ -134,6 +134,7 @@ Option key                               | Default value | Description
 -----------------------------------------|:-------------:|-----------------------------------------------------------------------------------------------------------
 `graphics.function-overview.hide`        | `true`        | Hide the function overview on startup.
 `graphics.function-overview.show-hidden` | `false`       | Also show hidden functions in function overview.
+`graphics.functions.grab-radius`         | `20`          | Radius around the mouse cursor functions can be grabbed with
 `graphics.functions.rendering-method`    | `LINES`       | Startup rendering method of functions.<br> Valid values: `LINES`, `PATH`, `POINTS`
 `graphics.info-box.docked`               | `true`        | Dock info box to corners or  to mouse cursor.
 `graphics.info-box.function-radius`      | `20`          | Show values of functions around mouse cursor.<br> `-1`: All, `0`: No, else only functions inside `radius`

@@ -128,6 +128,10 @@ public class DrawableFunction extends DrawableComponent {
         g.draw(this.path);
     }
 
+    void move(Point source, Point destination, FunctionPlotter parent) {
+        // TODO: Implement
+    }
+
     private int diff(int i1, int i2) {
         if (i1 < i2) return i2 - i1;
         else return i1 - i2;

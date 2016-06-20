@@ -38,6 +38,8 @@ public class CheatSheet extends DrawableComponent {
                 "0", "Center the y-axis in the middle of the window",
                 "G", "Center the x-axis in the middle of the window",
                 "O", "Center the ordinate origin in the middle of the window",
+                "",
+                "Shift + G", "Move function"
         };
         final String[] zoom = {
             "Zoom:",
@@ -54,7 +56,7 @@ public class CheatSheet extends DrawableComponent {
                 "(Shift + ) F", "Add a function (and keep prompt open)",
                 "(Shift + ) C", "Add a constant (and keep prompt open)",
                 "E", "Evaluate expression",
-                "ESC", "Close input field",
+                "ESC", "Exit to normal mode",
         };
         final String[] view = {
             "View:",

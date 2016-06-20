@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import static polyplot.graphics.FunctionPlotter.Mode;
+
 /**
  * A component that represents a input field the user can use to input data.<br>
  * The input field can process the data and output given output. The output can
@@ -138,14 +140,24 @@ public class InputField extends DrawableComponent {
         }
     }
 
-    void read(String prompt, boolean keepField, boolean clearOutput, Consumer<String> toPerform, FunctionPlotter parent) {
+
+    void read(String prompt,
+              boolean keepField, boolean clearOutput, Consumer<String> toPerform, FunctionPlotter parent) {
+        read(prompt, null, keepField, clearOutput, toPerform, parent);
+    }
+
+
+    void read(String prompt, String input,
+              boolean keepField, boolean clearOutput, Consumer<String> toPerform, FunctionPlotter parent) {
         if (working)
             return;
 
         this.title.setTitle(prompt);
 
+        if (input != null)
+            this.inputField.setText(input);
         this.client = parent;
-        parent.enableKeyBindings(false);
+        parent.setMode(Mode.INPUT);
         this.toPerform = Objects.requireNonNull(toPerform);
         this.working  = true;
         super.hidden = false;
@@ -253,7 +265,8 @@ public class InputField extends DrawableComponent {
         this.working = false;
         super.hidden = true;
         this.toPerform = null;
-        client.enableKeyBindings(true);
+        if (client.getMode() == Mode.INPUT)
+            client.setMode(Mode.NORMAL);
     }
 
     static List<String> getArguments(CharSequence input) {

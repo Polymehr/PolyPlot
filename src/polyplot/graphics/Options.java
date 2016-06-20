@@ -33,7 +33,13 @@ public enum Options {
 
     private static final String FUNCTION_COLORS = "graphics.functions.colors";
     private static final String FUNCTION_COLORS_DEFAULT = "[FF0000, 00FF00, 0000FF, FFC800, 00FFFF, FF00FF]";
+    private static final String FUNCTION_GRAB_RADIUS = "graphics.functions.grab-radius";
+    private static final String FUNCTION_GRAB_RADIUS_DEFAULT = "20";
+    private static final String FUNCTION_RENDERING = "graphics.functions.rendering-method";
+    private static final String FUNCTION_RENDERING_DEFAULT = "LINES";
     Integer[] functionColors;
+    int mouseGrabRadius;
+    DrawableFunction.DrawingMethod functionsPointRendering;
 
     private static final String BOX_FG = "graphics.info-box.foreground";
     private static final String BOX_FG_DEFAULT = "FF";
@@ -101,10 +107,6 @@ public enum Options {
     private static final String SCALE_STRETCH_DEFAULT = "false";
     boolean scaleStretch;
 
-    private static final String FUNCTION_RENDERING = "graphics.functions.rendering-method";
-    private static final String FUNCTION_RENDERING_DEFAULT = "LINES";
-    DrawableFunction.DrawingMethod functionsPointRendering;
-
     private static final String ZOOM_BASE = "graphics.zoom-base";
     private static final String ZOOM_BASE_DEFAULT = "1.05";
     double zoomBase;
@@ -128,6 +130,7 @@ public enum Options {
 
         defaults.put(FUNCTION_COLORS, FUNCTION_COLORS_DEFAULT);
         defaults.put(FUNCTION_RENDERING, FUNCTION_RENDERING_DEFAULT);
+        defaults.put(FUNCTION_GRAB_RADIUS, FUNCTION_GRAB_RADIUS_DEFAULT);
 
         defaults.put(BOX_BG, BOX_BG_DEFAULT);
         defaults.put(BOX_FG, BOX_FG_DEFAULT);
@@ -391,12 +394,14 @@ public enum Options {
             } catch (IllegalArgumentException e) {
                 this.functionsPointRendering = DrawableFunction.DrawingMethod.valueOf(FUNCTION_RENDERING_DEFAULT);
             }
+            this.mouseGrabRadius = getIntValue(FUNCTION_GRAB_RADIUS, i -> i > 0);
 
         } else {
             // Prevent the loading of non-theme options set in theme files on reload.
             // I know, it's cheaty.
             options.put(SCALE_STRETCH, SCALE_STRETCH_DEFAULT);
             options.put(FUNCTION_RENDERING, FUNCTION_RENDERING_DEFAULT);
+            options.put(FUNCTION_GRAB_RADIUS, FUNCTION_GRAB_RADIUS_DEFAULT);
             options.put(BOX_DOCKED, BOX_DOCKED_DEFAULT);
             options.put(BOX_PIXELS, BOX_PIXELS_DEFAULT);
             options.put(BOX_RADIUS, BOX_RADIUS_DEFAULT);
