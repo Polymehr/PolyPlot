@@ -12,7 +12,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.util.*;
 import java.util.List;
 import java.util.function.Consumer;
@@ -74,10 +77,15 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private final Compiler compiler;
     private List<DrawableFunction> functions;
+    private DrawableFunction grabbedFunction;
     private final Map<String, Color> functionColors;
+
+
+    private Mode mode;
 
     FunctionPlotter() {
         o = Options.INSTANCE;
+        mode = Mode.NORMAL;
 
         this.setLayout(new BorderLayout());
         super.setFocusable(true);
@@ -134,6 +142,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
         compiler = new Compiler(new CompilationContext(true));
         functions = new ArrayList<>(10);
+        grabbedFunction = null;
         compiler.getContext().addObserver(this);
         functionColors = new HashMap<>();
 
@@ -196,6 +205,14 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     int getPower() {
         return pow;
+    }
+
+    Mode getMode() {
+        return mode;
+    }
+
+    void setMode(Mode mode) {
+        this.mode = mode;
     }
 
     List<DrawableFunction> getFunctions() {
@@ -373,6 +390,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 zoom(new Point(getWidth() / 2, getHeight() / 2), -1);
                 repaint();
             }
@@ -384,6 +402,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 zoom(new Point(getWidth() / 2, getHeight() / 2), 1);
                 repaint();
             }
@@ -397,6 +416,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 zoom(new Point(getWidth() / 2, getHeight() / 2), -10);
                 repaint();
             }
@@ -410,6 +430,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 zoom(new Point(getWidth() / 2, getHeight() / 2), 10);
                 repaint();
             }
@@ -421,6 +442,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 setZoom(new Point(getWidth() / 2, getHeight() / 2), 0);
                 repaint();
             }
@@ -432,6 +454,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 info.toggleHidden();
                 repaint();
             }
@@ -452,6 +475,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 DrawableFunction.toggleDrawingMethod();
                 repaint();
             }
@@ -462,6 +486,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 functionInfo.toggleHidden();
                 repaint();
             }
@@ -479,6 +504,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Add function or constant", false, true, addFunctionConstant, FunctionPlotter.this);
                 repaint();
             }
@@ -489,6 +515,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Add function or constant", true, true, addFunctionConstant, FunctionPlotter.this);
                 repaint();
             }
@@ -550,6 +577,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Add function", false, true, addFunction, FunctionPlotter.this);
                 repaint();
             }
@@ -560,6 +588,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Add function", true, true, addFunction, FunctionPlotter.this);
                 repaint();
             }
@@ -620,6 +649,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Add constant", false, true, addConstant, FunctionPlotter.this);
                 repaint();
             }
@@ -630,6 +660,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Add constant", true, true, addConstant, FunctionPlotter.this);
                 repaint();
             }
@@ -640,6 +671,7 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 inputField.read("Evaluate", false, false, s -> {
                     try {
                         inputField.postLine(s + " = " + compiler.constantExpression(s));
@@ -803,6 +835,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("centerYAxis", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 xCorner = -(spanX / 2);
                 repaint();
             }
@@ -811,6 +844,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("centerXAxis", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 yCorner = -(spanY / 2);
                 repaint();
             }
@@ -819,17 +853,60 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("centerToOrigin", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT) return;
                 yCorner = -(spanY / 2);
                 xCorner = -(spanX / 2);
                 repaint();
             }
         });
-    }
 
-    void enableKeyBindings(final boolean enable) {
-        ActionMap map = this.getActionMap();
-        for (Object o : map.allKeys())
-            map.get(o).setEnabled(enable);
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK), "grabFunction");
+        action.put("grabFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT || mode == Mode.MOVE) return;
+                if (!functions.isEmpty()) {
+                    String autoInput = null;
+
+                    if (functions.size() == 1)
+                        autoInput = functions.get(0).getFunction().getName().toLowerCase();
+                    else
+                        if (mouse != null)
+                            for (int i = functions.size()-1; i >= 0; --i)
+                                if (functions.get(i).intersectsWith(mouse, o.mouseGrabRadius, FunctionPlotter.this)) {
+                                    autoInput = functions.get(i).getFunction().getName();
+                                    break;
+                                }
+
+                    inputField.read("Move function by name", autoInput, false, true, (String f) -> {
+                        f = f.trim().toLowerCase();
+                        for (DrawableFunction df : functions)
+                            if (df.getFunction().getName().equals(f)) {
+                                grabbedFunction = df;
+                                mode = Mode.MOVE;
+                                return;
+                            }
+                        inputField.postError("No function with name '" + f + "' found!");
+                    }, FunctionPlotter.this);
+                    repaint();
+                }
+            }
+        });
+
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "exitMode");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "exitMode");
+        action.put("exitMode", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.NORMAL)
+                    return;
+                else if (mode == Mode.INPUT)
+                    inputField.cancel();
+                mode = Mode.NORMAL;
+                repaint();
+            }
+        });
+
     }
 
     private void registerMouseListener() {
@@ -923,13 +1000,19 @@ public class FunctionPlotter extends JPanel implements Observer {
         compiler.getContext().getFunctions(true).forEach(f -> {
             if (f instanceof PureFunction) {
                 final Color tmp;
-                if (functionColors.containsKey(f.getName())) tmp = functionColors.get(f.getName());
-                else tmp = new Color(this.o.functionColors[functionColors.size() % this.o.functionColors.length]);
-                functionColors.put(f.getName(), tmp);
+                if (functionColors.containsKey(f.getName().toLowerCase()))
+                    tmp = functionColors.get(f.getName().toLowerCase());
+                else
+                    tmp = new Color(this.o.functionColors[functionColors.size() % this.o.functionColors.length]);
+                functionColors.put(f.getName().toLowerCase(), tmp);
                 functions.add(new DrawableFunction(tmp, (PureFunction) f));
             }
         });
         repaint();
+    }
+
+    enum Mode {
+        NORMAL, MOVE, INPUT;
     }
 
     private class DebugGUI extends DrawableComponent {
@@ -956,6 +1039,7 @@ public class FunctionPlotter extends JPanel implements Observer {
             String[] info = {
                     "DEBUG INFO:",
                     "program_version        = " + PolyPlot.VERSION,
+                    "mode                   = " + mode,
                     "span_base              = " + spanBase,
                     "span                   = " + span,
                     "span_x                 = " + spanX,
