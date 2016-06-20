@@ -3,6 +3,7 @@ package polyplot.graphics;
 import polyplot.PolyPlot;
 import polyplot.math.CompilationContext;
 import polyplot.math.Compiler;
+import polyplot.math.Function;
 import polyplot.math.PureFunction;
 
 import javax.script.ScriptEngine;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * A {@link JPanel} that contains a ordinate system that can display
@@ -756,8 +758,6 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
-
-
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "left");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0), "left");
         action.put("left", new AbstractAction() {
@@ -940,19 +940,23 @@ public class FunctionPlotter extends JPanel implements Observer {
 
             repaint();
         });
-
-
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                if (FunctionPlotter.this.grabbedFunction != null) {
+                    FunctionPlotter.this.grabbedFunction = null;
+                    FunctionPlotter.this.mode = Mode.NORMAL;
+                }
                 mouse = e.getPoint();
             }
         });
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
+                if (FunctionPlotter.this.grabbedFunction != null)
+                    FunctionPlotter.this.grabbedFunction.move(mouse, e.getPoint(), FunctionPlotter.this);
                 mouse = e.getPoint();
-                if (!info.isHidden())
+                if (FunctionPlotter.this.grabbedFunction != null || !info.isHidden())
                     repaint();
             }
 
@@ -995,6 +999,9 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     @Override
     public void update(Observable o, Object arg) {
+        List<DrawableFunction> moved = functions.stream()
+                .filter(DrawableFunction::isMoved)
+                .collect(Collectors.toList());
         functions.clear();
         debug.updateFuncConstCount();
         compiler.getContext().getFunctions(true).forEach(f -> {
@@ -1005,7 +1012,10 @@ public class FunctionPlotter extends JPanel implements Observer {
                 else
                     tmp = new Color(this.o.functionColors[functionColors.size() % this.o.functionColors.length]);
                 functionColors.put(f.getName().toLowerCase(), tmp);
-                functions.add(new DrawableFunction(tmp, (PureFunction) f));
+                final DrawableFunction tmpDrawable = new DrawableFunction(tmp, (PureFunction) f);
+                final int index = moved.indexOf(tmpDrawable);
+                if (index >= 0) tmpDrawable.setOffset(moved.get(index).getXOffset(), moved.get(index).getYOffset());
+                functions.add(tmpDrawable);
             }
         });
         repaint();

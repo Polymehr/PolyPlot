@@ -33,6 +33,9 @@ public class DrawableFunction extends DrawableComponent {
     private int lastHeight = -1;
     private double lastXCorner = NaN;
     private double lastYCorner = NaN;
+    private double xOffset = 0.0;
+    private double yOffset = 0.0;
+    private boolean grabbed = false;
 
     public enum DrawingMethod { PATH, POINTS, LINES }
 
@@ -70,13 +73,14 @@ public class DrawableFunction extends DrawableComponent {
         final double tmpXCorner = parent.getXCorner();
         final double tmpYCorner = parent.getYCorner();
         if (tmpWidth == this.lastWidth && tmpXCorner == this.lastXCorner && tmpYCorner == this.lastYCorner
-                && tmpHeight == this.lastHeight && this.pixelBuffer != null) {
+                && tmpHeight == this.lastHeight && !this.grabbed && this.pixelBuffer != null) {
             g2d.drawImage(this.pixelBuffer, null, null);
         }
         this.lastWidth = tmpWidth;
         this.lastXCorner = tmpXCorner;
         this.lastYCorner = tmpYCorner;
         this.lastHeight = tmpHeight;
+        this.grabbed = false;
 
         if (this.pixelBuffer != null && this.pixelBuffer.getWidth() == this.lastWidth
                 && this.pixelBuffer.getHeight() == this.lastHeight) {
@@ -103,11 +107,56 @@ public class DrawableFunction extends DrawableComponent {
         g2d.drawImage(this.pixelBuffer, null, null);
     }
 
+
+    void move(Point source, Point destination, FunctionPlotter parent) {
+        final double xOffset = parent.getValueOfXPixel(destination.x) - parent.getValueOfXPixel(source.x);
+        final double yOffset = parent.getValueOfYPixel(destination.y) - parent.getValueOfYPixel(source.y);
+        try {
+            this.xOffset -= xOffset; // minus magic
+            this.yOffset += yOffset;
+        } catch (IllegalArgumentException ignored) {
+            System.err.println(ignored.toString());
+        }
+        this.grabbed = true;
+    }
+
+    boolean isMoved() {
+        return this.xOffset != 0.0 || this.yOffset != 0.0;
+    }
+
+    void setOffset(double xOffset, double yOffset) {
+        if (Double.isInfinite(xOffset) || Double.isInfinite(yOffset) || Double.isNaN(xOffset) || Double.isNaN(yOffset))
+            throw new IllegalArgumentException("illegal offset: " + xOffset + ", " + yOffset);
+        this.xOffset = xOffset;
+        this.yOffset = yOffset;
+    }
+
+    double getXOffset() {
+        return this.xOffset;
+    }
+
+    double getYOffset() {
+        return this.yOffset;
+    }
+
+    private int diff(int i1, int i2) {
+        if (i1 < i2) return i2 - i1;
+        else return i1 - i2;
+    }
+
+    private double calculateXValue(int pixel, FunctionPlotter parent) {
+        return parent.getValueOfXPixel(pixel) + this.xOffset;
+    }
+
+    private int calculateYPixel(double yValue, FunctionPlotter parent) {
+        return parent.getPixelToYValue(yValue + this.yOffset);
+    }
+
     public void drawPath(Graphics2D g, FunctionPlotter parent) {
         this.path.reset();
         boolean lastWasNaN = true;
-        for (int i = -1, width = parent.getWidth(); i < width; ++i) {
-            final double y = this.function.fastOf(parent.getValueOfXPixel(i));
+        for (int i = -1; i < this.lastWidth; ++i) {
+            final double y = this.function.fastOf(this.calculateXValue(i, parent));
             if (y == y) { // when y = NaN this is false
                 final int yPixel, xPixel;
                 if (y == Double.POSITIVE_INFINITY) {
@@ -118,7 +167,7 @@ public class DrawableFunction extends DrawableComponent {
                     yPixel = this.lastHeight;
                 } else {
                     xPixel = i;
-                    yPixel = parent.getPixelToYValue(y);
+                    yPixel = this.calculateYPixel(y, parent);
                 }
                 if (lastWasNaN) this.path.moveTo(xPixel, yPixel);
                 else this.path.lineTo(xPixel, yPixel);
@@ -128,20 +177,11 @@ public class DrawableFunction extends DrawableComponent {
         g.draw(this.path);
     }
 
-    void move(Point source, Point destination, FunctionPlotter parent) {
-        // TODO: Implement
-    }
-
-    private int diff(int i1, int i2) {
-        if (i1 < i2) return i2 - i1;
-        else return i1 - i2;
-    }
-
     void drawPoints(Graphics2D g, FunctionPlotter parent) {
         for (int i = 0; i < this.lastWidth; ++i) {
-            final double y = this.function.fastOf(parent.getValueOfXPixel(i));
+            final double y = this.function.fastOf(this.calculateXValue(i, parent));
             if (y != y) continue;
-            final int yPixel = parent.getPixelToYValue(y);
+            final int yPixel = this.calculateYPixel(y, parent);
 
             if (yPixel >= 0 && yPixel < this.lastHeight) {
                 //this.pixelBuffer.setRGB(i, yPixel, rgb);
@@ -158,15 +198,15 @@ public class DrawableFunction extends DrawableComponent {
         //((Graphics2D)g).setStroke(STROKE);
         int lastYPixel;
         {
-            final double tmpY = this.function.fastOf(parent.getValueOfXPixel(-1));
-            if (tmpY == tmpY) lastYPixel = parent.getPixelToYValue(tmpY);
+            final double tmpY = this.function.fastOf(this.calculateXValue(-1, parent));
+            if (tmpY == tmpY) lastYPixel = this.calculateYPixel(tmpY, parent);
             else lastYPixel = Integer.MAX_VALUE;
         }
         for (int i = 0; i < parent.getWidth(); ++i) {
-            final double y = this.function.fastOf(parent.getValueOfXPixel(i));
+            final double y = this.function.fastOf(this.calculateXValue(i, parent));
             int yPixel = Integer.MAX_VALUE;
             if (y == y) {
-                yPixel = parent.getPixelToYValue(y);
+                yPixel = this.calculateYPixel(y, parent);
                 // of one of the points is visible
                 if ((yPixel > NEG_OFFSET && yPixel < OFFSET) || (lastYPixel > NEG_OFFSET && lastYPixel < OFFSET)) {
                     g.drawLine(i - 1, lastYPixel, i, yPixel);
@@ -174,5 +214,12 @@ public class DrawableFunction extends DrawableComponent {
             }
             lastYPixel = yPixel;
         }
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other == null || !(other instanceof DrawableFunction)) return false;
+        final DrawableFunction df = (DrawableFunction) other;
+        return df.function.getName().equalsIgnoreCase(this.function.getName());
     }
 }
