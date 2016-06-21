@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
  */
 public class FunctionPlotter extends JPanel implements Observer {
 
-    private static final long serialVersionUID = 1L;
-
     static final RenderingHints RENDERING_HINTS;
     static {
         RENDERING_HINTS = new RenderingHints(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -317,6 +315,31 @@ public class FunctionPlotter extends JPanel implements Observer {
         xCorner -= xd;
     }
 
+    private void move(Point a, Point b, boolean function) {
+        if (function && mode == Mode.MOVE &&
+            grabbedFunction != null)
+            grabbedFunction.move(b, a, this);
+        else if (mode != Mode.INPUT)
+            move(a, b);
+        repaint();
+    }
+
+    private void center(boolean x, boolean y, boolean function) {
+        if (mode != Mode.INPUT) {
+            if (x)
+                yCorner = -(spanY / 2);
+            if (y)
+                xCorner = -(spanX / 2);
+            if (function && mode == Mode.MOVE && grabbedFunction != null) {
+                double xOffset = y ? 0 : grabbedFunction.getXOffset();
+                double yOffset = x ? 0 : grabbedFunction.getYOffset();
+
+                grabbedFunction.setOffset(xOffset, yOffset);
+            }
+        }
+        repaint();
+    }
+
 
     void zoom(Point center, int factor) {
 
@@ -388,8 +411,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_PLUS, InputEvent.CTRL_DOWN_MASK), "zoomIn");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ADD, InputEvent.CTRL_DOWN_MASK), "zoomIn");
         action.put("zoomIn", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -400,8 +421,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_DOWN_MASK), "zoomOut");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT, InputEvent.CTRL_DOWN_MASK), "zoomOut");
         action.put("zoomOut", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -414,8 +433,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_ADD,
                 InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "zoomInFast");
         action.put("zoomInFast", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -428,8 +445,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_SUBTRACT,
                 InputEvent.CTRL_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "zoomOutFast");
         action.put("zoomOutFast", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -440,8 +455,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.CTRL_DOWN_MASK), "zoomReset");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD0, InputEvent.CTRL_DOWN_MASK), "zoomReset");
         action.put("zoomReset", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -452,8 +465,6 @@ public class FunctionPlotter extends JPanel implements Observer {
 
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), "toggleInfo");
         action.put("toggleInfo", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -463,8 +474,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "toggleHelp");
         action.put("toggleHelp", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 help.toggleHidden();
@@ -473,8 +482,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "toggleDrawingMethod");
         action.put("toggleDrawingMethod", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -484,8 +491,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, 0), "toggleFuncInfo");
         action.put("toggleFuncInfo", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -502,8 +507,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         };
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "addFunctionConstant");
         action.put("addFunctionConstant", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -513,8 +516,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.SHIFT_DOWN_MASK), "addFunctionConstantKeep");
         action.put("addFunctionConstantKeep", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -575,8 +576,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         };
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), "addFunction");
         action.put("addFunction", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -586,8 +585,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK), "addFunctionKeep");
         action.put("addFunctionKeep", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -647,8 +644,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         };
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0), "addConstant");
         action.put("addConstant", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -658,8 +653,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.SHIFT_DOWN_MASK), "addConstantKeep");
         action.put("addConstantKeep", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -669,8 +662,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0), "evaluate");
         action.put("evaluate", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT) return;
@@ -687,8 +678,6 @@ public class FunctionPlotter extends JPanel implements Observer {
 
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0), "reRender");
         action.put("reRender", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 repaint();
@@ -696,8 +685,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "toggleDebug");
         action.put("toggleDebug", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 debug.toggleHidden();
@@ -706,8 +693,6 @@ public class FunctionPlotter extends JPanel implements Observer {
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, InputEvent.CTRL_DOWN_MASK), "debugConsole");
         action.put("debugConsole", new AbstractAction() {
-            private static final long serialVersionUID = 1L;
-
             @Override
             public void actionPerformed(ActionEvent e) {
                 ScriptEngineManager sem = new ScriptEngineManager();
@@ -758,22 +743,21 @@ public class FunctionPlotter extends JPanel implements Observer {
                 repaint();
             }
         });
+        // Move coordinate system
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "left");
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0), "left");
         action.put("left", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point((int) +(getWidth() * 0.1), 0));
-                repaint();
+                move(new Point(), new Point((int) +(getWidth() * 0.1), 0), false);
             }
         });
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK), "leftSlow");
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.SHIFT_DOWN_MASK), "leftSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, InputEvent.ALT_DOWN_MASK), "leftSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.ALT_DOWN_MASK), "leftSlow");
         action.put("leftSlow", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point(+1, 0));
-                repaint();
+                move(new Point(), new Point(+1, 0), false);
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "right");
@@ -781,17 +765,15 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("right", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point((int) -(getWidth() * 0.1), 0));
-                repaint();
+                move(new Point(), new Point((int) -(getWidth() * 0.1), 0), false);
             }
         });
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK), "rightSlow");
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.SHIFT_DOWN_MASK), "rightSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, InputEvent.ALT_DOWN_MASK), "rightSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.ALT_DOWN_MASK), "rightSlow");
         action.put("rightSlow", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point(-1, 0));
-                repaint();
+                move(new Point(), new Point(-1, 0), false);
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "up");
@@ -799,17 +781,15 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("up", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point(0, (int) +(getHeight() * 0.1)));
-                repaint();
+                move(new Point(), new Point(0, (int) +(getHeight() * 0.1)), false);
             }
         });
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, InputEvent.SHIFT_DOWN_MASK), "upSlow");
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.SHIFT_DOWN_MASK), "upSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, InputEvent.ALT_DOWN_MASK), "upSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.ALT_DOWN_MASK), "upSlow");
         action.put("upSlow", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point(0, +1));
-                repaint();
+                move(new Point(), new Point(0, +1), false);
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "down");
@@ -817,17 +797,15 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("down", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point(0, (int) -(getHeight() * 0.1)));
-                repaint();
+                move(new Point(), new Point(0, (int) -(getHeight() * 0.1)), false);
             }
         });
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, InputEvent.SHIFT_DOWN_MASK), "downSlow");
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.SHIFT_DOWN_MASK), "downSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, InputEvent.ALT_DOWN_MASK), "downSlow");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.ALT_DOWN_MASK), "downSlow");
         action.put("downSlow", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                move(new Point(), new Point(0, -1));
-                repaint();
+                move(new Point(), new Point(0, -1), false);
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD0, 0), "centerYAxis");
@@ -835,33 +813,147 @@ public class FunctionPlotter extends JPanel implements Observer {
         action.put("centerYAxis", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (mode == Mode.INPUT) return;
-                xCorner = -(spanX / 2);
-                repaint();
+                center(false, true, false);
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, 0), "centerXAxis");
         action.put("centerXAxis", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (mode == Mode.INPUT) return;
-                yCorner = -(spanY / 2);
-                repaint();
+                center(true, false, false);
             }
         });
         input.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, 0), "centerToOrigin");
         action.put("centerToOrigin", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (mode == Mode.INPUT) return;
-                yCorner = -(spanY / 2);
-                xCorner = -(spanX / 2);
-                repaint();
+                center(true, true, false);
+            }
+        });
+        // Move grabbed function
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK), "leftFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.SHIFT_DOWN_MASK), "leftFunction");
+        action.put("leftFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point((int) +(getWidth() * 0.1), 0), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "leftSlowFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "leftSlowFunction");
+        action.put("leftSlowFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point(+1, 0), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK), "rightFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.SHIFT_DOWN_MASK), "rightFunction");
+        action.put("rightFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point((int) -(getWidth() * 0.1), 0), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "rightSlowFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "rightSlowFunction");
+        action.put("rightSlowFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point(-1, 0), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, InputEvent.SHIFT_DOWN_MASK), "upFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.SHIFT_DOWN_MASK), "upFunction");
+        action.put("upFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point(0, (int) +(getHeight() * 0.1)), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "upSlowFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "upSlowFunction");
+        action.put("upSlowFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point(0, +1), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, InputEvent.SHIFT_DOWN_MASK), "downFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.SHIFT_DOWN_MASK), "downFunction");
+        action.put("downFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point(0, (int) -(getHeight() * 0.1)), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "downSlowFunction");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_J, InputEvent.ALT_DOWN_MASK + InputEvent.SHIFT_DOWN_MASK), "downSlowFunction");
+        action.put("downSlowFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                move(new Point(), new Point(0, -1), true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_INSERT, 0), "centerYAxis");
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_0, InputEvent.SHIFT_DOWN_MASK), "centerYAxisFunction");
+        action.put("centerYAxisFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                center(false, true, true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK), "centerXAxisFunction");
+        action.put("centerXAxisFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                center(true, false, true);
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.SHIFT_DOWN_MASK), "centerToOriginFunction");
+        action.put("centerToOriginFunction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                center(true, true, true);
             }
         });
 
-        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK), "grabFunction");
-        action.put("grabFunction", new AbstractAction() {
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), "grabFunctionSelect");
+        action.put("grabFunctionSelect", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (mode == Mode.INPUT || mode == Mode.MOVE) return;
+                if (!functions.isEmpty()) {
+
+                    if (functions.size() == 1) {
+                        grabbedFunction = functions.get(0);
+                        mode = Mode.MOVE;
+                        return;
+                    } else
+                    if (mouse != null)
+                        for (int i = functions.size()-1; i >= 0; --i)
+                            if (functions.get(i).intersectsWith(mouse, o.mouseGrabRadius, FunctionPlotter.this)) {
+                                grabbedFunction = functions.get(i);
+                                mode = Mode.MOVE;
+                                return;
+                            }
+
+                    inputField.read("Move function by name", false, true, (String f) -> {
+                        f = f.trim().toLowerCase();
+                        for (DrawableFunction df : functions)
+                            if (df.getFunction().getName().equals(f)) {
+                                grabbedFunction = df;
+                                mode = Mode.MOVE;
+                                return;
+                            }
+                        inputField.postError("No function with name '" + f + "' found!");
+                    }, FunctionPlotter.this);
+                    repaint();
+                }
+            }
+        });
+        input.put(KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.SHIFT_DOWN_MASK), "grabFunctionComplete");
+        action.put("grabFunctionComplete", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (mode == Mode.INPUT || mode == Mode.MOVE) return;
@@ -943,7 +1035,8 @@ public class FunctionPlotter extends JPanel implements Observer {
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (FunctionPlotter.this.grabbedFunction != null) {
+                if (mode == Mode.MOVE && e.getButton() == MouseEvent.BUTTON1 &&
+                        FunctionPlotter.this.grabbedFunction != null) {
                     FunctionPlotter.this.grabbedFunction = null;
                     FunctionPlotter.this.mode = Mode.NORMAL;
                 }
@@ -953,7 +1046,7 @@ public class FunctionPlotter extends JPanel implements Observer {
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                if (FunctionPlotter.this.grabbedFunction != null)
+                if (mode == Mode.MOVE && FunctionPlotter.this.grabbedFunction != null)
                     FunctionPlotter.this.grabbedFunction.move(mouse, e.getPoint(), FunctionPlotter.this);
                 mouse = e.getPoint();
                 if (FunctionPlotter.this.grabbedFunction != null || !info.isHidden())
@@ -1061,6 +1154,9 @@ public class FunctionPlotter extends JPanel implements Observer {
                     "function_render_method = " + DrawableFunction.DRAWING_METHOD,
                     "defined_functions      = " + functions + " (" + functionsUser + ")",
                     "defined_constants      = " + constants + " (" + constantsUser + ")",
+                    "grabbed_function       = " + (grabbedFunction == null ? "" :
+                            grabbedFunction.getFunction().getName() +
+                            " (" + grabbedFunction.getXOffset() + ", " + grabbedFunction.getYOffset() + ")"),
                     "zoom                   = " + zoom,
                     "zoom_base              = " + zoomBase,
                     "power                  = " + pow,
