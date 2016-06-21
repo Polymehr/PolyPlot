@@ -51,9 +51,9 @@ public class DrawableFunction extends DrawableComponent {
     }
 
     boolean intersectsWith(Point p, int radius, FunctionPlotter parent) {
-        double yVal = this.function.of(parent.getValueOfXPixel(p.x));
+        double yVal = this.function.of(parent.getValueOfXPixel(p.x) + xOffset);
         if (yVal != yVal || yVal == POSITIVE_INFINITY || yVal == NEGATIVE_INFINITY) return false;
-        else return diff(parent.getPixelToYValue(yVal), p.y) < radius;
+        else return diff(parent.getPixelToYValue(yVal - yOffset), p.y) < radius;
     }
 
     public PureFunction getFunction() {
@@ -129,6 +129,7 @@ public class DrawableFunction extends DrawableComponent {
             throw new IllegalArgumentException("illegal offset: " + xOffset + ", " + yOffset);
         this.xOffset = xOffset;
         this.yOffset = yOffset;
+        this.grabbed = true;
     }
 
     double getXOffset() {

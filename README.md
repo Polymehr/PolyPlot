@@ -4,40 +4,40 @@ A simple two dimensional function plotter in Java.
 
 ## Controls
 PolyPlot has specific key combinations that allow you to perform certain actions. 
-If a key in the following list is in parentheses, it means that the press of that 
-key can modify the action. All terms in the Action column that are in parentheses,
-will only take effect if that key is pressed.
+If a key in the following list is in parentheses or brackets, it means that the press of that 
+key can modify the action. All terms in the Action column that are in parentheses or brackets,
+will only take effect if that key is pressed respectively.
 
 #### Movement
 Input                          | Action
 -------------------------------|----------------------------------------------------------
-(Shift + ) ← or H              | Move left 10% of width (or 1px)
-(Shift + ) ↑ or J              | Move up 10% of height (or 1px)
-(Shift + ) ↓ or K              | Move down 10% of height (or 1px)
-(Shift + ) → or L              | Move right 10% of width (or 1px)
+(Alt) + [Shift] + ← or H       | Move [Function] left 10% of width (or 1px)
+(Alt) + [Shift] + ↑ or J       | Move [Function] up 10% of height (or 1px)
+(Alt) + [Shift] + ↓ or K       | Move [Function] down 10% of height (or 1px)
+(Alt) + [Shift] + → or L       | Move [Function] right 10% of width (or 1px)
 \<Mouse Dragging>              | Move coordinate system
-(Alt + ) Scroll Up/Down        | Move along x-axis in positive/negative direction (1px)
-Shift + (Alt) + Scroll Up/Down | Move along y-axis in positive/negative direction (1px)
-0                              | Center the y-axis in the middle of the window
-G                              | Center the x-axis in the middle of the window
-O                              | Center the ordinate origin in the middle of the window
-Shift + G                      | Move function
+(Alt) + Scroll Up/Down         | Move along x-axis in positive/negative direction (1px)
+(Alt) + Shift + Scroll Up/Down | Move along y-axis in positive/negative direction (1px)
+(Shift) + 0                    | Center the (Function at) y-axis in the middle of the window
+(Shift) + G                    | Center the (Function at) x-axis in the middle of the window
+(Shift) + O                    | Center the (Function at) ordinate origin in the middle of the window
+(Shift) + M                    | Move function; autoselect (or autocomplete) if possible
 
 #### Zoom
 Input                          | Action
 -------------------------------|----------------------------------------------------------
-Ctrl + (Shift) + Plus          | Zoom in (10x faster)
-Ctrl + (Shift) + Minus         | Zoom out (10x faster)
+(Shift) + Ctrl + Plus          | Zoom in (10x faster)
+(Shift) + Ctrl + Minus         | Zoom out (10x faster)
 Ctrl + 0                       | Reset Zoom
-Ctrl + (Shift) + Scroll Up     | Zoom in (10x faster)
-Ctrl + (Shift) + Scroll Down   | Zoom out (10x faster)
+(Shift) + Ctrl + Scroll Up     | Zoom in (10x faster)
+(Shift) + Ctrl + Scroll Down   | Zoom out (10x faster)
 
 #### Control
 Input                          | Action
 -------------------------------|----------------------------------------------------------
-(Shift + ) A                   | Add a function or constant (and keep prompt open)
-(Shift + ) F                   | Add a function, nameless possible (and keep prompt open)
-(Shift + ) C                   | Add a constant, nameless possible (and keep prompt open)
+(Shift) + A                    | Add a function or constant (and keep prompt open)
+(Shift) + F                    | Add a function, nameless possible (and keep prompt open)
+(Shift) + C                    | Add a constant, nameless possible (and keep prompt open)
 E                              | Evaluate expression
 ESC                            | Exit to normal mode
 #### View

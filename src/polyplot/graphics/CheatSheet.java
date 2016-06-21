@@ -26,44 +26,44 @@ public class CheatSheet extends DrawableComponent {
         final int margin = 10;
         final String[] movement = {
             "Movement:",
-                "(Shift + ) \u2190 or H", "Move left 10% of width (or 1px)",
-                "(Shift + ) \u2191 or J", "Move up 10% of height (or 1px)",
-                "(Shift + ) \u2193 or K", "Move down 10% of height (or 1px)",
-                "(Shift + ) \u2192 or L", "Move right 10% of width (or 1px)",
+                "(Alt) + [Shift] + \u2190 or H", "Move [Function] left 10% of width (or 1px)",
+                "(Alt) + [Shift] + \u2191 or J", "Move [Function] up 10% of height (or 1px)",
+                "(Alt) + [Shift] + \u2193 or K", "Move [Function] down 10% of height (or 1px)",
+                "(Alt) + [Shift] + \u2192 or L", "Move [Function] right 10% of width (or 1px)",
                 "", "",
                 "<Mouse Dragging>", "Move coordinate system",
-                "(Alt + ) Scroll Up/Down", "Move along x-axis in positive/negative direction (1px)",
-                "Shift + (Alt) + Scroll Up/Down", "Move along y-axis in positive/negative direction (1px)",
+                "(Alt) + Scroll Up/Down", "Move along x-axis in positive/negative direction (1px)",
+                "(Alt) + Shift + Scroll Up/Down", "Move along y-axis in positive/negative direction (1px)",
                 "", "",
-                "0", "Center the y-axis in the middle of the window",
-                "G", "Center the x-axis in the middle of the window",
-                "O", "Center the ordinate origin in the middle of the window",
+                "(Shift) + 0", "Center the (Function at) y-axis in the middle of the window",
+                "(Shift) + G", "Center the (Function at) x-axis in the middle of the window",
+                "(Shift) + O", "Center the (Function at) ordinate origin in the middle of the window",
                 "", "",
-                "Shift + G", "Move function"
+                "(Shift) + M", "Move function; autoselect (or autocomplete) if possible"
         };
         final String[] zoom = {
             "Zoom:",
-                "Ctrl + (Shift) + Plus", "Zoom in (10x faster)",
-                "Ctrl + (Shift) + Minus", "Zoom out (10x faster)",
+                "(Shift) + Ctrl + Plus", "Zoom in (10x faster)",
+                "(Shift) + Ctrl + Minus", "Zoom out (10x faster)",
                 "Ctrl + 0", "Reset Zoom",
                 "", "",
-                "Ctrl + (Shift) + Scroll Up", "Zoom in (10x faster)",
-                "Ctrl + (Shift) + Scroll Down", "Zoom out (10x faster)",
+                "(Shift) + Ctrl + Scroll Up", "Zoom in (10x faster)",
+                "(Shift) + Ctrl + Scroll Down", "Zoom out (10x faster)",
         };
         final String[] control = {
             "Control:",
-                "(Shift + ) A", "Add a function or constant (and keep prompt open)",
-                "(Shift + ) F", "Add a function (and keep prompt open)",
-                "(Shift + ) C", "Add a constant (and keep prompt open)",
+                "(Shift) + A", "Add a function or constant (and keep prompt open)",
+                "(Shift) + F", "Add a function (and keep prompt open)",
+                "(Shift) + C", "Add a constant (and keep prompt open)",
                 "E", "Evaluate expression",
                 "ESC", "Exit to normal mode",
         };
         final String[] view = {
             "View:",
                 "F1", "Toggle the Cheat Sheet",
-                "B", "Toggle the info box",
-                "R", "Toggle rendering method of functions",
-                "D", "Toggle showing of defined functions and constants"
+                "B",  "Toggle the info box",
+                "R",  "Toggle rendering method of functions",
+                "D",  "Toggle showing of defined functions and constants"
         };
 
         final String[][] data = {movement, zoom, control, view};
