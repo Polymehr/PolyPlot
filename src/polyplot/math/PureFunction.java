@@ -10,12 +10,16 @@ import java.util.function.DoubleUnaryOperator;
  */
 public final class PureFunction extends Function implements DoubleUnaryOperator {
 
+    private double xOffset = 0.0;
+    private double yOffset = 0.0;
+
     PureFunction(String name, String fullExpression, CompiledToken[] postfix) {
         super(name, fullExpression, 1, Objects.requireNonNull(postfix, "compiled postfix expression must not be null"));
         this.of(0.0); // needed because the stack needs to be the correct size for fastOf(...) to work
     }
 
     public double of(double x) {
+        x += xOffset;
         for (CompiledToken token : this.postfix) {
             switch (token.type) {
                 case NUMBER: this.stack.push(token.number); break;
@@ -35,7 +39,27 @@ public final class PureFunction extends Function implements DoubleUnaryOperator 
             }
         }
         if (this.stack.size() != 1) throw new IllegalStateException("stack not one at the end of calculation");
-        return this.stack.pop();
+        return this.stack.pop() + yOffset;
+    }
+
+    public void setXOffset(double xOffset) {
+        if (Double.isNaN(xOffset) || Double.isInfinite(xOffset))
+            throw new IllegalArgumentException("illegal x offset: " + xOffset);
+        this.xOffset = xOffset;
+    }
+
+    public void setYOffset(double yOffset) {
+        if (Double.isNaN(yOffset) || Double.isInfinite(yOffset))
+            throw new IllegalArgumentException("illegal y offset: " + yOffset);
+        this.yOffset = yOffset;
+    }
+
+    public double getXOffset() {
+        return this.xOffset;
+    }
+
+    public double getYOffset() {
+        return this.yOffset;
     }
 
     /**
@@ -45,6 +69,7 @@ public final class PureFunction extends Function implements DoubleUnaryOperator 
      * @see #of(double)
      */
     public double fastOf(double x) {
+        x += xOffset;
         for (CompiledToken token : this.postfix) {
             switch (token.type) {
                 case NUMBER: this.stack.stack[++this.stack.top] = token.number; break;
@@ -56,7 +81,7 @@ public final class PureFunction extends Function implements DoubleUnaryOperator 
                     else if (token.unaryOperator == UnaryOperation.PLUS.operation) break;
                     else
                         this.stack.stack[++this.stack.top] = token.unaryOperator.applyAsDouble(arg);
-                break;
+                    break;
                 case BINARY_OPERATION:
                     final double arg1 = this.stack.stack[this.stack.top--];
                     final double arg0 = this.stack.stack[this.stack.top--];
@@ -74,17 +99,17 @@ public final class PureFunction extends Function implements DoubleUnaryOperator 
                         this.stack.stack[++this.stack.top] = arg0 % arg1;
                     else
                         this.stack.stack[++this.stack.top] = token.binaryOperator.applyAsDouble(arg0, arg1);
-                break;
+                    break;
                 case FUNCTION:
                     ImpureFunction f = token.function;
                     for (int i = 0, stop = f.getNumberOfArguments(); i < stop; ++i)
                         f.args[i] = this.stack.stack[this.stack.top--];
                     this.stack.stack[++this.stack.top] = f.ofStoredArgs();
-                break;
+                    break;
             }
         }
         if (this.stack.top != 0) throw new IllegalStateException("stack not one at the end of calculation");
-        return this.stack.stack[this.stack.top--];
+        return this.stack.stack[this.stack.top--] + yOffset;
     }
 
     @Override

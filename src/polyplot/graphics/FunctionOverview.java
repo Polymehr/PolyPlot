@@ -62,7 +62,7 @@ public class FunctionOverview extends DrawableComponent {
         }
 
         for (CompilationContext.Constant c : context.getConstants(showOnlyUserDefined))
-            constants.add(c.getFullExpression());
+            constants.add(c.getFullExpression() + String.format(Locale.ROOT, " \u2248 %.2f", c.getValue()));
 
         Collections.sort(constants, (c1, c2) -> {
                     String s1 = c1.substring(0, c1.indexOf(' '));
