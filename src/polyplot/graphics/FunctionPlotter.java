@@ -317,11 +317,12 @@ public class FunctionPlotter extends JPanel implements Observer {
 
     private void move(Point a, Point b, boolean function) {
         if (function && mode == Mode.MOVE &&
-            grabbedFunction != null)
-            grabbedFunction.move(b, a, this);
-        else if (mode != Mode.INPUT)
-            move(a, b);
-        repaint();
+            this.grabbedFunction != null) {
+            this.grabbedFunction.move(b, a, this);
+            this.compiler.updateConstants();
+        } else if (mode != Mode.INPUT)
+            this.move(a, b);
+        super.repaint();
     }
 
     private void center(boolean x, boolean y, boolean function) {
@@ -1046,8 +1047,11 @@ public class FunctionPlotter extends JPanel implements Observer {
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                if (mode == Mode.MOVE && FunctionPlotter.this.grabbedFunction != null)
+                if (mode == Mode.MOVE && FunctionPlotter.this.grabbedFunction != null) {
                     FunctionPlotter.this.grabbedFunction.move(mouse, e.getPoint(), FunctionPlotter.this);
+                    FunctionPlotter.this.compiler.updateConstants();
+                }
+
                 mouse = e.getPoint();
                 if (FunctionPlotter.this.grabbedFunction != null || !info.isHidden())
                     repaint();

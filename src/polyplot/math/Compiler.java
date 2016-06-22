@@ -73,6 +73,19 @@ public final class Compiler {
     }
 
     /**
+     * Reevaluate all user-defined constants' values.
+     * This should be called when functions are moved in the GUI.
+     */
+    public void updateConstants() {
+        for (CompilationContext.Constant constant : this.context.getConstants(true)) {
+            this.context.removeConstantIfPresent(constant.getName());
+            if (constant.getFullExpression() != null)
+                this.definition(constant.getFullExpression());
+        }
+        this.context.changed();
+    }
+
+    /**
      * Returns the {@link CompilationContext} passed to the constructor.
      * @return a {@link CompilationContext}; never {@code null}
      */
