@@ -119,12 +119,14 @@ The following functions are already defined and can be used in expressions:
  * toRadians(x)
  * ulp(x)
 
+(The functions internally use the implementation in `java.lang.Math`. `√(x)` is the same as `sqrt(x)`)
+
 The following constants are already defined and can be used in expressions:
  * pi
  * π
  * e
 
-(All functions and constants are taken from `java.lang.Math`.)
+(The constants' values come from `java.lang.Math`. `π` is the same as `pi`.)
 
 ## Options and Themes
 ### Options
@@ -198,7 +200,7 @@ The list must be opened with a opening bracket (`[`) and closed with a closing b
 The values in between are separated by commata (`,`). Values have the same limitations as
 base colors because they do not support transparency and and missing zeros will be filled with
 out.<br>
-**Attention:** if one color in the list is invalid (no or more than 8 characters) or the list is
+**Attention:** if one color in the list is invalid (no or more than 6 characters) or the list is
 empty, it will be regarded invalid and replaced by the default value.
 
 #### Generating Themes
